@@ -74,8 +74,8 @@ const updateLocalState = (operation: Operation) => {
 
         return {
           ...label,
-          idsociedad: updates.IDSOCIEDAD ? updates.IDSOCIEDAD.toString() : label.idsociedad,
-          idcedi: updates.IDCEDI ? updates.IDCEDI.toString() : label.idcedi,
+          idsociedad: updates.IDSOCIEDAD !== undefined? updates.IDSOCIEDAD.toString() : label.idsociedad,
+          idcedi: updates.IDCEDI !== undefined ? updates.IDCEDI.toString() : label.idcedi,
           idetiqueta: updates.IDETIQUETA !== undefined ? updates.IDETIQUETA : label.idetiqueta,
           etiqueta: updates.ETIQUETA !== undefined ? updates.ETIQUETA : label.etiqueta,
           indice: updates.INDICE !== undefined ? updates.INDICE : label.indice,
@@ -150,6 +150,8 @@ const updateLocalState = (operation: Operation) => {
               ...subRow,
               idvalor: updates.IDVALOR !== undefined ? updates.IDVALOR : subRow.idvalor,
               valor: updates.VALOR !== undefined ? updates.VALOR : subRow.valor,
+              idsociedad: updates.IDSOCIEDAD !== undefined ? updates.IDSOCIEDAD.toString() : subRow.idsociedad,
+              idcedi: updates.IDCEDI !== undefined ? updates.IDCEDI.toString() : subRow.idcedi,
               idvalorpa: updates.IDVALORPA !== undefined ? updates.IDVALORPA : subRow.idvalorpa,
               alias: updates.ALIAS !== undefined ? updates.ALIAS : subRow.alias,
               secuencia: updates.SECUENCIA !== undefined ? updates.SECUENCIA : subRow.secuencia,

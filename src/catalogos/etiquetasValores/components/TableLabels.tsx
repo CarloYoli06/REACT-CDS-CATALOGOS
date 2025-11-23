@@ -1,8 +1,6 @@
 import {
   AnalyticalTable,
   AnalyticalTableSelectionMode,
-  Tokenizer,
-  Token,
   AnalyticalTableHooks,
   Title,
   Button,
@@ -13,14 +11,13 @@ import {
   FlexBoxAlignItems,
   FlexBoxDirection,
   FlexBoxJustifyContent,
-
 } from '@ui5/webcomponents-react';
 import '@ui5/webcomponents-icons/dist/pending';
 import '@ui5/webcomponents-icons/dist/delete';
 import { TableParentRow, TableSubRow } from '../services/labelService';
 import { useMemo, useRef, useState, useEffect, } from 'react';
 import { setLabels, getOperations, removeOperation, subscribe, Operation } from '../store/labelStore';
-import { EditableCell, ImagePopoverCell, PopoverCell } from './EditableCell';
+import { EditableCell, ImagePopoverCell, PopoverCell, TokenViewCell } from './EditableCell';
 
 interface TableLabelsProps {
   data: TableParentRow[];
@@ -43,8 +40,16 @@ const parentColumns = [
     accessor: "idetiqueta", 
     Cell: (props: any) => <EditableCell {...props} /> 
   },
-  { Header: "IDSOCIEDAD", accessor: "idsociedad", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
-  { Header: "IDCEDI", accessor: "idcedi" },
+  { 
+    Header: "IDSOCIEDAD", 
+    accessor: "idsociedad",
+    Cell: (props: any) => <EditableCell {...props} editorType="sociedad" /> 
+  },
+  { 
+    Header: "IDCEDI", 
+    accessor: "idcedi",
+    Cell: (props: any) => <EditableCell {...props} editorType="cedi" />
+  },
   { 
     Header: "COLECCION", 
     accessor: "coleccion", 
@@ -63,20 +68,7 @@ const parentColumns = [
   {
     Header: "INDICE",
     accessor: "indice",
-    Cell: ({ cell: { value } }: any) => {
-      const valueStr = (typeof value === 'string' && value) ? value : '';
-      if (!valueStr) return null;
-      const indices = valueStr.split(',').filter(v => v.trim() !== '');
-
-      return (
-        <Tokenizer title={valueStr} style={{ width: '100%', padding: '0.25rem 0' }}>
-          {indices.map((indice, index) => (
-            <Token key={index} text={indice.trim()} />
-          ))}
-        </Tokenizer>
-      );
-    }
-  },
+    Cell: (props: any) => <EditableCell {...props} editorType="indice" viewComponent={TokenViewCell} />  },
   {
     Header: "IMAGEN",
     accessor: "imagen",
@@ -105,7 +97,11 @@ const childColumns = [
     accessor: "valor", 
     Cell: (props: any) => <EditableCell {...props} /> 
   },  
-  { Header: "ID VALOR PADRE", accessor: "idvalorpa", Cell: (props: any) => <EditableCell {...props} /> },
+  { 
+    Header: "ID VALOR PADRE", 
+    accessor: "idvalorpa", 
+    Cell: (props: any) => <EditableCell {...props} editorType="parentSelector" /> 
+  },  
   { Header: "SOCIEDAD", accessor: "idsociedad", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
   { Header: "CEDI", accessor: "idcedi", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
   { 
@@ -121,20 +117,7 @@ const childColumns = [
   {
     Header: "ÍNDICE",
     accessor: "indice",
-    Cell: ({ cell: { value } }: any) => {
-      const valueStr = (typeof value === 'string' && value) ? value : '';
-      if (!valueStr) return null;
-      const indices = valueStr.split(',').filter(v => v.trim() !== '');
-
-      return (
-        <Tokenizer title={valueStr} style={{ width: '100%', padding: '0.25rem 0' }}>
-          {indices.map((indice, index) => (
-            <Token key={index} text={indice.trim()} />
-          ))}
-        </Tokenizer>
-      );
-    }
-  },
+    Cell: (props: any) => <EditableCell {...props} editorType="indice" viewComponent={TokenViewCell} />  },
   {
     Header: "IMAGEN",
     accessor: "imagen",

@@ -3,12 +3,15 @@ import { createPortal } from "react-dom";
 import { Input } from "@ui5/webcomponents-react";
 import { addOperation } from "../store/labelStore";
 import { TableParentRow, TableSubRow } from "../services/labelService";
-import '@ui5/webcomponents-icons/dist/background'; // O 'picture', 'image-missing', etc.
-import { Icon } from '@ui5/webcomponents-react';
+import { IndiceEditor, CatalogEditor, ParentValueEditor } from "./Editors";
+import '@ui5/webcomponents-icons/dist/background'; 
+import { Icon, Tokenizer, Token } from '@ui5/webcomponents-react';
 
 const COLUMN_TO_PAYLOAD_MAP: { [key: string]: string } = {
   etiqueta: "ETIQUETA",
   idetiqueta: "IDETIQUETA",
+  idsociedad: "IDSOCIEDAD",
+  idcedi: "IDCEDI",
   coleccion: "COLECCION",
   seccion: "SECCION",
   secuencia: "SECUENCIA",
@@ -23,7 +26,6 @@ const COLUMN_TO_PAYLOAD_MAP: { [key: string]: string } = {
   idvalorpa: "IDVALORPA"
 };
 
-// --- COMPONENTE POPOVER PARA TEXTO ---
 export const PopoverCell = ({ value }: { value: string }) => {
   const cellRef = useRef<HTMLDivElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
@@ -148,7 +150,6 @@ export const PopoverCell = ({ value }: { value: string }) => {
   );
 };
 
-// --- NUEVO COMPONENTE POPOVER PARA IMAGENES ---
 export const ImagePopoverCell = ({ value }: { value: string }) => {
   const cellRef = useRef<HTMLDivElement>(null);
   const [popoverPosition, setPopoverPosition] = useState<{ x: number; y: number; flipX: boolean } | null>(null);
@@ -290,12 +291,37 @@ export const ImagePopoverCell = ({ value }: { value: string }) => {
   );
 };
 
-// --- COMPONENTE PRINCIPAL EDITABLE ---
+export const TokenViewCell = ({ value }: { value: any }) => {
+  const valueStr = (typeof value === 'string' && value) ? value : '';
+    
+  if (!valueStr.trim()) return null;
+
+  const indices = valueStr.split(',').map(v => v.trim()).filter(v => v !== '');
+
+  if (indices.length === 0) return null;
+
+  return (
+    <Tokenizer 
+      style={{ 
+        width: '100%', 
+        border: 'none', 
+        background: 'transparent',
+        padding: '0'
+      }}
+      readonly
+    >
+      {indices.map((text, index) => (
+        <Token key={`${index}-${text}`} text={text} />
+      ))}
+    </Tokenizer>
+  );
+};
 interface EditableCellProps {
   value: any;
   row: { original: TableParentRow | TableSubRow; index: number };
   column: { id: string };
   viewComponent?: React.ComponentType<{ value: any }>;
+  editorType?: 'text' | 'indice' | 'sociedad' | 'cedi' | 'parentSelector';
 }
 
 export const EditableCell = ({
@@ -303,33 +329,25 @@ export const EditableCell = ({
   row: { original: rowData },
   column: { id: columnId },
   viewComponent: ViewComponent,
+  editorType = 'text'
 }: EditableCellProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(initialValue);
 
-  // Sincronizar estado si la prop cambia externamente
   useEffect(() => {
     setValue(initialValue);
   }, [initialValue]);
 
-  const handleSave = () => {
+  const handleSave = (customValue?: any) => {
     setIsEditing(false);
 
-    // 1. Si no hay cambios, no hacemos nada
-    if (value === initialValue) return;
+    const finalValueToSave = customValue !== undefined ? customValue : value;
 
-    // 2. Determinar si es Padre o Hijo
+    if (finalValueToSave === initialValue) return;
+
     const isParent = 'parent' in rowData && rowData.parent === true;
-    
-    // 3. Obtener IDs
-    const id = isParent 
-      ? (rowData as TableParentRow).idetiqueta 
-      : (rowData as TableSubRow).idvalor;
-    
-    // Para hijos necesitamos el ID del padre (idetiqueta) para el contexto
+    const id = isParent ? (rowData as TableParentRow).idetiqueta : (rowData as TableSubRow).idvalor;
     const parentId = (rowData as TableSubRow).idetiqueta;
-
-    // 4. Mapear el campo
     const fieldName = COLUMN_TO_PAYLOAD_MAP[columnId];
 
     if (!fieldName) {
@@ -337,24 +355,22 @@ export const EditableCell = ({
       return;
     }
 
-    // 5. Preparar Updates
-    // Manejo especial para números si fuera necesario (ej. secuencia)
-    const finalValue = columnId === 'secuencia' ? Number(value) : value;
-    
-    const updates = {
-      [fieldName]: finalValue
-    };
+    const processedValue = columnId === 'secuencia' ? Number(finalValueToSave) : finalValueToSave;
+    setValue(processedValue);
 
-    console.log(`Guardando cambio en ${isParent ? 'Etiqueta' : 'Valor'} [${id}]: ${columnId} -> ${finalValue}`);
+    console.log(`Guardando cambio en ${isParent ? 'Etiqueta' : 'Valor'} [${id}]: ${columnId} -> ${processedValue}`);
 
-    // 6. Enviar al Store
     addOperation({
       collection: isParent ? 'labels' : 'values',
       action: 'UPDATE',
       payload: {
         id: id,
         IDETIQUETA: isParent ? undefined : parentId, 
-        updates: updates
+        IDSOCIEDAD: Number(rowData.idsociedad),
+        IDCEDI: Number(rowData.idcedi),
+        updates: {
+          [fieldName]: processedValue
+        }
       }
     });
   };
@@ -364,26 +380,37 @@ export const EditableCell = ({
     setIsEditing(false);
   };
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-      e.stopPropagation(); 
-      return; 
+  const renderEditor = () => {
+    switch (editorType) {
+      case 'indice':
+        return <IndiceEditor value={value} onSave={handleSave} onCancel={handleCancel} />;
+      case 'sociedad':
+        return <CatalogEditor value={value} catalogTag="SOCIEDAD" onSave={handleSave} onCancel={handleCancel} />;
+      case 'cedi':
+        return <CatalogEditor value={value} catalogTag="CEDI" onSave={handleSave} onCancel={handleCancel} />;
+      case 'parentSelector':
+        return <ParentValueEditor value={value} onSave={handleSave} onCancel={handleCancel} />;
+      case 'text':
+      default:
+        return (
+          <Input
+            value={value}
+            onInput={(e) => setValue(e.target.value)}
+            onBlur={() => handleSave()}
+            onKeyDown={(e) => {
+              if(e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation();
+              if(e.key === "Enter") handleSave();
+              if(e.key === "Escape") handleCancel();
+            }}
+            autoFocus
+            style={{ width: '100%' }}
+          />
+        );
     }
-    if (e.key === "Enter") handleSave();
-    if (e.key === "Escape") handleCancel();
   };
 
   if (isEditing) {
-    return (
-      <Input
-        value={value}
-        onInput={(e) => setValue(e.target.value)}
-        onBlur={handleSave} 
-        onKeyDown={onKeyDown}
-        autoFocus
-        style={{ width: '100%' }}
-      />
-    );
+    return <div style={{ width: '100%' }}>{renderEditor()}</div>;
   }
 
   return (
@@ -392,7 +419,7 @@ export const EditableCell = ({
         e.stopPropagation();
         setIsEditing(true);
       }}
-      style={{ width: '100%', 
+      style={{  width: '100%', 
                 height: '100%',
                 cursor: 'cell',
                 display: 'flex',
@@ -401,11 +428,7 @@ export const EditableCell = ({
               }}
       title="Doble clic para editar"
     >
-      {ViewComponent ? (
-        <ViewComponent value={value} />
-      ) : (
-        <PopoverCell value={value} />
-      )}
+      { ViewComponent ? <ViewComponent value={value} /> : <PopoverCell value={value} /> }
     </div>
   );
 };
