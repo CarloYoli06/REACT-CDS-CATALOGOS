@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { Input } from "@ui5/webcomponents-react";
 import { addOperation } from "../store/labelStore";
 import { TableParentRow, TableSubRow } from "../services/labelService";
+import '@ui5/webcomponents-icons/dist/background'; // O 'picture', 'image-missing', etc.
+import { Icon } from '@ui5/webcomponents-react';
 
 const COLUMN_TO_PAYLOAD_MAP: { [key: string]: string } = {
   etiqueta: "ETIQUETA",
@@ -150,6 +152,11 @@ export const PopoverCell = ({ value }: { value: string }) => {
 export const ImagePopoverCell = ({ value }: { value: string }) => {
   const cellRef = useRef<HTMLDivElement>(null);
   const [popoverPosition, setPopoverPosition] = useState<{ x: number; y: number; flipX: boolean } | null>(null);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [value]);
 
   if (!value) return null;
 
@@ -234,22 +241,42 @@ export const ImagePopoverCell = ({ value }: { value: string }) => {
         ref={cellRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        style={{ width: '100%', 
-                height: '100%',
-                cursor: 'cell',
-                display: 'flex',
-                alignItems: 'center', 
-                justifyContent: 'flex-start'
-               }}
+        style={{
+          display: 'flex',
+          alignItems: 'center', 
+          justifyContent: 'flex-start',
+          height: '100%',
+          width: '100%',
+        }}
       >
-        <img
-          src={value}
-          style={{ height: "40px", width: "auto", cursor: "zoom-in" }}
-          alt={value}
-        />
+        {hasError ? (
+          <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem', 
+              color: 'var(--sapContent_LabelColor)', 
+              fontSize: '0.75rem',
+              fontStyle: 'italic'
+          }}>
+             <Icon name="background" /> 
+             <span>No disponible</span> 
+          </div>
+        ) : (
+          <img
+            src={value}
+            onError={() => setHasError(true)}
+            style={{ 
+              height: "30px", 
+              width: "auto", 
+              maxHeight: "100%", 
+              cursor: "zoom-in" 
+            }}
+            alt="Vista previa" 
+          />
+        )}
       </div>
 
-      {popoverPosition && createPortal(
+      {!hasError && popoverPosition && createPortal(
         <div style={popoverStyle}>
           <img
             src={value}
