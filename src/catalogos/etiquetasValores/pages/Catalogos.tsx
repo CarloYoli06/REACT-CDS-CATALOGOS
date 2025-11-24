@@ -1,3 +1,4 @@
+// src/catalogos/etiquetasValores/pages/Catalogos.tsx
 import { useState, useEffect, useMemo } from "react";
 import {
   Title,
@@ -18,8 +19,9 @@ import ModalDeleteValor from "../components/ModalDeleteValor";
 import ModalSaveChanges from "../components/ModalSaveChanges";
 import ModalUpdateCatalogo from "../components/ModalUpdateCatalogo";
 import ModalUpdateValor from "../components/ModalUpdateValor";
+import ValidationErrorDialog from "../components/ValidationErrorDialog"; // ← IMPORTAR
 import { fetchLabels, TableParentRow, TableSubRow } from "../services/labelService";
-import { getLabels, subscribe, addOperation } from "../store/labelStore";
+import { getLabels, subscribe, addOperation, executeOperations } from "../store/labelStore"; // ← IMPORTAR executeOperations
 import TableLabels from "../components/TableLabels";
 
 export default function Catalogos() {
@@ -37,6 +39,11 @@ export default function Catalogos() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
+
+  // ← NUEVOS ESTADOS PARA ERRORES
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [errors, setErrors] = useState<any>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchLabels();
@@ -63,7 +70,22 @@ export default function Catalogos() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // ← MODIFICAR handleSave para usar executeOperations
   const handleSave = async () => {
+    setIsSaving(true);
+    
+    const result = await executeOperations();
+    
+    setIsSaving(false);
+    
+    if (!result.success) {
+      // AQUÍ SE CAPTURAN LOS ERRORES DEL BACKEND
+      setErrors(result.errors);
+      setShowErrorDialog(true);
+      return; // No continuar si hubo errores
+    }
+    
+    // Solo si fue exitoso:
     setSaveMessage("Datos guardados correctamente.");
     await fetchLabels();
     setSelectedLabels([]);
@@ -113,7 +135,6 @@ export default function Catalogos() {
     setExpandedRows(prev => ({ ...prev, ...changedExpanded }));
   };
 
-  // Contenido del menú móvil
   const mobileMenuContent = (
     <>
         <ModalNewCatalogo compact={false} />
@@ -155,7 +176,6 @@ export default function Catalogos() {
         }}
       >
         {isMobile ? (
-          // MÓVIL: Botón Hamburguesa
           <Button 
               id="menu-settings-btn"
               icon="menu2" 
@@ -164,7 +184,6 @@ export default function Catalogos() {
               tooltip="Opciones de gestión"
           />
         ) : (
-          // ESCRITORIO: Grupo de botones envuelto en DIV
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <ModalNewCatalogo compact={isSmall} />
             <ModalNewValor
@@ -195,7 +214,10 @@ export default function Catalogos() {
         )}
 
         <ToolbarSpacer />
-        <ModalSaveChanges onSave={handleSave} compact={isSmall} />
+        <ModalSaveChanges 
+          onSave={handleSave} 
+          compact={isSmall}
+        />
       </Toolbar>
       
       {isMobile && (
@@ -256,6 +278,14 @@ export default function Catalogos() {
             Catálogos y Valores
         </Title>
       </div>
+
+      {/* ← AGREGAR EL ValidationErrorDialog */}
+      <ValidationErrorDialog
+        open={showErrorDialog}
+        errors={errors}
+        onClose={() => setShowErrorDialog(false)}
+        title="Errores al Guardar Cambios"
+      />
 
       <div style={{ flex: 1, overflow: 'hidden', padding: '0 1rem 1rem 1rem' }}>
         <TableLabels 

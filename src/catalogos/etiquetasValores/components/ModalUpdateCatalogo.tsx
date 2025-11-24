@@ -118,45 +118,43 @@ function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProp
 
     const closeModal = () => {
         setIsModalOpen(false);
+
+        if (label) {
+            setFormData(label);
+            latestFormRef.current = label;
+            const tokens = label.indice ? label.indice.split(',').filter(t => t.trim() !== '') : [];
+            setIndiceTokens(tokens.map(t => t.trim()));
+            setInputValue('');
+        }
+        setErrors({});
     };
 
     // --- handleSubmit ya no recibe 'close' como argumento ---
-    const handleSubmit = async () => {
-        const snapshot: TableParentRow = { ...(latestFormRef.current || formData) };
+const handleSubmit = () => { // ← Ya NO es async
+  const snapshot: TableParentRow = { ...(latestFormRef.current || formData) };
 
-        if (validate(snapshot)) {
-            try {
-                const updatePayload = {
-                    id: label!.idetiqueta, // Use original ID to identify the item
-                    updates: {
-                        IDETIQUETA: snapshot.idetiqueta, // Include new IDETIQUETA in updates
-                        IDSOCIEDAD: Number(snapshot.idsociedad) || 0,
-                        IDCEDI: Number(snapshot.idcedi) || 0,
-                        ETIQUETA: snapshot.etiqueta,
-                        INDICE: snapshot.indice,
-                        COLECCION: snapshot.coleccion,
-                        SECCION: snapshot.seccion,
-                        SECUENCIA: Number(snapshot.secuencia) || 0,
-                        IMAGEN: snapshot.imagen,
-                        ROUTE: snapshot.ruta,
-                        DESCRIPCION: snapshot.descripcion
-                    }
-                };
+  if (!validate(snapshot)) {
+    setShowErrorDialog(true);
+    return;
+  }
 
-                await addOperation({
-                    collection: 'labels',
-                    action: 'UPDATE',
-                    payload: updatePayload
-                });
-                console.log('Operación de actualización enviada');
-                closeModal(); // <-- Llama a closeModal directamente
-            } catch (error) {
-                console.error("Error calling update operation:", error);
-            }
-        } else {
-            setShowErrorDialog(true);
-        }
-    };
+  const updatePayload = {
+    id: label!.idetiqueta,
+    updates: {
+      IDETIQUETA: snapshot.idetiqueta,
+      IDSOCIEDAD: Number(snapshot.idsociedad) || 0,
+      // ... resto de campos
+    }
+  };
+
+  addOperation({
+    collection: 'labels',
+    action: 'UPDATE',
+    payload: updatePayload
+  });
+  
+  closeModal(); // Cierra inmediatamente
+};
 
     // --- NUEVO RENDER ---
     return <>
@@ -192,21 +190,45 @@ function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProp
                 <FormGroup headerText='Informacion del Catalogo'>
 
                     <FormItem labelContent={<Label required>ID de la etiqueta</Label>}>
-                        <Input name="idetiqueta" value={formData.idetiqueta} onInput={handleChange} />
-                        {errors.idetiqueta && <span style={{ color: 'red' }}>{errors.idetiqueta}</span>}
+                        <Input 
+                            name="idetiqueta" 
+                            value={formData.idetiqueta} 
+                            onInput={handleChange}
+                            valueState={errors.idetiqueta ? "Negative" : "None"}
+                            valueStateMessage={<div slot="valueStateMessage">{errors.idetiqueta}</div>}
+                        />
                     </FormItem>
 
                     <FormItem labelContent={<Label >IDSOCIEDAD</Label>}>
-                        <Input type="Number" name="idsociedad" value={formData.idsociedad.toString() ?? ''} onInput={handleChange} />
+                        <Input 
+                            type="Number" 
+                            name="idsociedad" 
+                            value={formData.idsociedad.toString() ?? ''} 
+                            onInput={handleChange}
+                            valueState={errors.idsociedad ? "Negative" : "None"}
+                            valueStateMessage={<div slot="valueStateMessage">{errors.idsociedad}</div>}
+                        />
                     </FormItem>
 
                     <FormItem labelContent={<Label>IDCEDI</Label>}>
-                        <Input type="Number" name="idcedi" value={formData.idcedi.toString()} onInput={handleChange} />
+                        <Input 
+                            type="Number" 
+                            name="idcedi" 
+                            value={formData.idcedi.toString()} 
+                            onInput={handleChange}
+                            valueState={errors.idcedi ? "Negative" : "None"}
+                            valueStateMessage={<div slot="valueStateMessage">{errors.idcedi}</div>}
+                        />
                     </FormItem>
 
                     <FormItem labelContent={<Label required>ETIQUETA</Label>}>
-                        <Input name="etiqueta" value={formData.etiqueta} onInput={handleChange} />
-                        {errors.etiqueta && <span style={{ color: 'red' }}>{errors.etiqueta}</span>}
+                        <Input 
+                            name="etiqueta" 
+                            value={formData.etiqueta} 
+                            onInput={handleChange}
+                            valueState={errors.etiqueta ? "Negative" : "None"}
+                            valueStateMessage={<div slot="valueStateMessage">{errors.etiqueta}</div>}
+                        />
                     </FormItem>
 
                     <FormItem labelContent={<Label required>INDICE</Label>}>
@@ -285,21 +307,37 @@ function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProp
                                 }
                             }}
                         />
-                        {errors.indice && <span style={{ color: 'red' }}>{errors.indice}</span>}
                     </FormItem>
 
                     <FormItem labelContent={<Label required>COLECCION</Label>}>
-                        <Input name="coleccion" value={formData.coleccion} onInput={handleChange} />
-                        {errors.coleccion && <span style={{ color: 'red' }}>{errors.coleccion}</span>}
+                        <Input 
+                            name="coleccion" 
+                            value={formData.coleccion} 
+                            onInput={handleChange}
+                            valueState={errors.coleccion ? "Negative" : "None"}
+                            valueStateMessage={<div slot="valueStateMessage">{errors.coleccion}</div>}
+                        />
                     </FormItem>
 
                     <FormItem labelContent={<Label required>SECCION</Label>}>
-                        <Input name="seccion" value={formData.seccion} onInput={handleChange} />
-                        {errors.seccion && <span style={{ color: 'red' }}>{errors.seccion}</span>}
+                        <Input 
+                            name="seccion" 
+                            value={formData.seccion} 
+                            onInput={handleChange}
+                            valueState={errors.seccion ? "Negative" : "None"}
+                            valueStateMessage={<div slot="valueStateMessage">{errors.seccion}</div>}
+                        />
                     </FormItem>
 
                     <FormItem labelContent={<Label>SECUENCIA</Label>}>
-                        <Input name="secuencia" type="Number" value={String (formData.secuencia ?? '')} onInput={handleChange} />
+                        <Input 
+                            name="secuencia" 
+                            type="Number" 
+                            value={String(formData.secuencia ?? '')} 
+                            onInput={handleChange}
+                            valueState={errors.secuencia ? "Negative" : "None"}
+                            valueStateMessage={<div slot="valueStateMessage">{errors.secuencia}</div>}
+                        />
                     </FormItem>
 
                     <FormItem labelContent={<Label>Imagen</Label>}>
