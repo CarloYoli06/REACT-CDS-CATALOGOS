@@ -305,6 +305,31 @@ const SociedadCell = ({ value }: { value: any }) => {
   return <PopoverCell value={displayValue} />;
 };
 
+// --- COMPONENTE VALOR PADRE CELL ---
+const ValorPadreCell = ({ value }: { value: any }) => {
+  const valStr = value != null ? String(value) : '';
+
+  // Si es 0 o null, mostrar vacío
+  if (!valStr || parseInt(valStr, 10) === 0) return <PopoverCell value="" />;
+
+  const labels = getLabels();
+  let displayValue = valStr;
+
+  // Buscar en todos los valores de todas las etiquetas
+  for (const label of labels) {
+    if (label.subRows) {
+      const found = label.subRows.find(sub => parseInt(sub.idvalor, 10) === parseInt(valStr, 10));
+      if (found) {
+        displayValue = found.valor;
+        break;
+      }
+    }
+  }
+
+  return <PopoverCell value={displayValue} />;
+};
+
+
 const parentColumns = [
   { Header: "Etiqueta", accessor: "etiqueta", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
   { Header: "IDETIQUETA", accessor: "idetiqueta", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
@@ -342,7 +367,7 @@ const parentColumns = [
 const childColumns = [
   { Header: "ID VALOR", accessor: "idvalor", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
   { Header: "VALOR", accessor: "valor", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
-  { Header: "VALOR PADRE", accessor: "idvalorpa", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
+  { Header: "VALOR PADRE", accessor: "idvalorpa", Cell: ({ cell: { value } }: any) => <ValorPadreCell value={value} /> },
   { Header: "SOCIEDAD", accessor: "idsociedad", Cell: ({ cell: { value } }: any) => <SociedadCell value={value} /> },
   { Header: "CEDI", accessor: "idcedi", Cell: ({ cell: { value } }: any) => <CediCell value={value} /> },
   { Header: "ALIAS", accessor: "alias", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
