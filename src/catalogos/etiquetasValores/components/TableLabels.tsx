@@ -17,7 +17,7 @@ import '@ui5/webcomponents-icons/dist/delete';
 import { TableParentRow, TableSubRow } from '../services/labelService';
 import { useMemo, useRef, useState, useEffect, } from 'react';
 import { setLabels, getOperations, removeOperation, subscribe, Operation } from '../store/labelStore';
-import { EditableCell, ImagePopoverCell, PopoverCell, TokenViewCell } from './EditableCell';
+import { EditableCell, ImagePopoverCell, TokenViewCell, CatalogViewCell } from './EditableCell';
 
 interface TableLabelsProps {
   data: TableParentRow[];
@@ -40,15 +40,29 @@ const parentColumns = [
     accessor: "idetiqueta", 
     Cell: (props: any) => <EditableCell {...props} /> 
   },
-  { 
+{ 
     Header: "IDSOCIEDAD", 
     accessor: "idsociedad",
-    Cell: (props: any) => <EditableCell {...props} editorType="sociedad" /> 
+    Cell: (props: any) => (
+        <EditableCell 
+            {...props} 
+            editorType="sociedad" 
+            viewComponent={CatalogViewCell} 
+            viewProps={{ catalogTag: "SOCIEDAD" }} 
+        /> 
+    )
   },
   { 
     Header: "IDCEDI", 
     accessor: "idcedi",
-    Cell: (props: any) => <EditableCell {...props} editorType="cedi" />
+    Cell: (props: any) => (
+        <EditableCell 
+            {...props} 
+            editorType="cedi" 
+            viewComponent={CatalogViewCell} 
+            viewProps={{ catalogTag: "CEDI" }} 
+        />
+    )
   },
   { 
     Header: "COLECCION", 
@@ -102,8 +116,30 @@ const childColumns = [
     accessor: "idvalorpa", 
     Cell: (props: any) => <EditableCell {...props} editorType="parentSelector" /> 
   },  
-  { Header: "SOCIEDAD", accessor: "idsociedad", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
-  { Header: "CEDI", accessor: "idcedi", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
+  { 
+    Header: "SOCIEDAD",
+    accessor: "idsociedad", 
+    Cell: (props: any) => (
+        <EditableCell 
+            {...props} 
+            editorType="sociedad" 
+            viewComponent={CatalogViewCell} 
+            viewProps={{ catalogTag: "SOCIEDAD" }} 
+        /> 
+    )
+  },
+  { 
+    Header: "CEDI", 
+    accessor: "idcedi", 
+    Cell: (props: any) => (
+        <EditableCell 
+            {...props} 
+            editorType="cedi" 
+            viewComponent={CatalogViewCell} 
+            viewProps={{ catalogTag: "CEDI" }} 
+        />
+    )
+  },
   { 
     Header: "ALIAS", 
     accessor: "alias", 
@@ -114,10 +150,6 @@ const childColumns = [
     accessor: "secuencia",
     Cell: (props: any) => <EditableCell {...props} />
   },
-  {
-    Header: "ÍNDICE",
-    accessor: "indice",
-    Cell: (props: any) => <EditableCell {...props} editorType="indice" viewComponent={TokenViewCell} />  },
   {
     Header: "IMAGEN",
     accessor: "imagen",

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@ui5/webcomponents-react";
-import { addOperation } from "../store/labelStore";
+import { addOperation, getLabels } from "../store/labelStore";
 import { TableParentRow, TableSubRow } from "../services/labelService";
 import { IndiceEditor, CatalogEditor, ParentValueEditor } from "./Editors";
 import '@ui5/webcomponents-icons/dist/background'; 
@@ -326,12 +326,54 @@ export const TokenViewCell = ({ value, onSave }: { value: any, onSave?: (val: an
     </Tokenizer>
   );
 };
+
+interface CatalogViewCellProps {
+  value: any;
+  catalogTag: "SOCIEDAD" | "CEDI"; 
+}
+
+export const CatalogViewCell = ({ value, catalogTag }: CatalogViewCellProps) => {
+  const labelText = React.useMemo(() => {
+      if (!value) return "";
+      
+      const allLabels = getLabels();
+      const parentCatalog = allLabels.find(l => l.idetiqueta === catalogTag);
+      
+      if (parentCatalog && parentCatalog.subRows) {
+          const match = parentCatalog.subRows.find(row => {
+              if (row.idvalor === String(value)) return true;
+              
+              if (value !== "" && row.idvalor !== "" && !isNaN(Number(row.idvalor)) && !isNaN(Number(value))) {
+                return Number(row.idvalor) === Number(value);
+              }
+              
+              return false;
+          });
+          
+          return match ? match.valor : value; 
+      }
+      return value;
+  }, [value, catalogTag]);
+
+  return (
+    <div style={{ 
+        whiteSpace: 'nowrap', 
+        overflow: 'hidden', 
+        textOverflow: 'ellipsis',
+        width: '100%' 
+    }} title={labelText}>
+        {labelText}
+    </div>
+  );
+};
+
 interface EditableCellProps {
   value: any;
   row: { original: TableParentRow | TableSubRow; index: number };
   column: { id: string };
   viewComponent: React.ComponentType<{ value: any; onSave?: (val: any) => void }>;
   editorType?: 'text' | 'indice' | 'sociedad' | 'cedi' | 'parentSelector';
+  viewProps?: any;
 }
 
 export const EditableCell = ({
@@ -339,7 +381,8 @@ export const EditableCell = ({
   row: { original: rowData },
   column: { id: columnId },
   viewComponent: ViewComponent,
-  editorType = 'text'
+  editorType = 'text',
+  viewProps
 }: EditableCellProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(initialValue);
@@ -437,7 +480,7 @@ export const EditableCell = ({
       }}
       title="Doble clic para editar"
     >
-      { ViewComponent ? <ViewComponent value={value} onSave={handleSave} /> : <PopoverCell value={value} /> }
+      { ViewComponent ? <ViewComponent value={value} onSave={handleSave} {...viewProps} /> : <PopoverCell value={value} /> }
     </div>
   );
 };
