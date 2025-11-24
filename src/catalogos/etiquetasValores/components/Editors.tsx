@@ -40,14 +40,25 @@ export const IndiceEditor = ({ value, onSave, onCancel }: EditorProps) => {
   };
 
   const handleTokenDelete = (e: any) => {
-     const deletedText = e.detail?.tokens?.[0]?.text;
-     if (deletedText) {
-        setTokens(prev => prev.filter(t => t !== deletedText));
-     }
+    if (e) {
+      e.stopPropagation?.();
+      e.preventDefault?.();
+    }
+
+    const deletedText = e.detail?.tokens?.[0]?.text;
+    if (deletedText) {
+      setTokens(prev => prev.filter(t => t !== deletedText));
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.stopPropagation();
+      return;
+    }
+
     if (e.key === "Enter") {
+      e.stopPropagation();
       e.preventDefault();
       if (inputValue.trim()) {
         if(!tokens.includes(inputValue.trim())){
@@ -58,7 +69,10 @@ export const IndiceEditor = ({ value, onSave, onCancel }: EditorProps) => {
         commitChanges();
       }
     }
-    if (e.key === "Escape") onCancel();
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      onCancel();
+    }
   };
 
   return (

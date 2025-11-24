@@ -291,7 +291,7 @@ export const ImagePopoverCell = ({ value }: { value: string }) => {
   );
 };
 
-export const TokenViewCell = ({ value }: { value: any }) => {
+export const TokenViewCell = ({ value, onSave }: { value: any, onSave?: (val: any) => void }) => {
   const valueStr = (typeof value === 'string' && value) ? value : '';
     
   if (!valueStr.trim()) return null;
@@ -300,18 +300,28 @@ export const TokenViewCell = ({ value }: { value: any }) => {
 
   if (indices.length === 0) return null;
 
+  const handleTokenDelete = (e: any) => {
+    e.preventDefault(); 
+    if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+
+    const tokenToDelete = e.detail?.tokens?.[0]?.text;
+
+    if (tokenToDelete && onSave) {
+      const newTokens = indices.filter(t => t !== tokenToDelete);
+      const newValueStr = newTokens.join(', ');
+      onSave(newValueStr);
+    }
+  };
+
   return (
     <Tokenizer 
-      style={{ 
-        width: '100%', 
-        border: 'none', 
-        background: 'transparent',
-        padding: '0'
-      }}
-      readonly
+      title={valueStr} 
+      style={{ width: '100%', padding: '0.25rem' }}
+      onTokenDelete={handleTokenDelete}
+      onClick={(e) => e.stopPropagation()}
     >
       {indices.map((text, index) => (
-        <Token key={`${index}-${text}`} text={text} />
+        <Token key={index} text={text} />
       ))}
     </Tokenizer>
   );
@@ -320,7 +330,7 @@ interface EditableCellProps {
   value: any;
   row: { original: TableParentRow | TableSubRow; index: number };
   column: { id: string };
-  viewComponent?: React.ComponentType<{ value: any }>;
+  viewComponent: React.ComponentType<{ value: any; onSave?: (val: any) => void }>;
   editorType?: 'text' | 'indice' | 'sociedad' | 'cedi' | 'parentSelector';
 }
 
@@ -357,8 +367,6 @@ export const EditableCell = ({
 
     const processedValue = columnId === 'secuencia' ? Number(finalValueToSave) : finalValueToSave;
     setValue(processedValue);
-
-    console.log(`Guardando cambio en ${isParent ? 'Etiqueta' : 'Valor'} [${id}]: ${columnId} -> ${processedValue}`);
 
     addOperation({
       collection: isParent ? 'labels' : 'values',
@@ -419,16 +427,17 @@ export const EditableCell = ({
         e.stopPropagation();
         setIsEditing(true);
       }}
-      style={{  width: '100%', 
-                height: '100%',
-                cursor: 'cell',
-                display: 'flex',
-                alignItems: 'center', 
-                justifyContent: 'flex-start'
-              }}
+      style={{  
+        width: '100%', 
+        height: '100%',
+        cursor: 'cell',
+        display: 'flex',
+        alignItems: 'center', 
+        justifyContent: 'flex-start'
+      }}
       title="Doble clic para editar"
     >
-      { ViewComponent ? <ViewComponent value={value} /> : <PopoverCell value={value} /> }
+      { ViewComponent ? <ViewComponent value={value} onSave={handleSave} /> : <PopoverCell value={value} /> }
     </div>
   );
 };
