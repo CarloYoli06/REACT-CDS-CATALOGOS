@@ -13,14 +13,13 @@ import {
   FlexBoxAlignItems,
   FlexBoxDirection,
   FlexBoxJustifyContent,
-
 } from '@ui5/webcomponents-react';
 import '@ui5/webcomponents-icons/dist/pending';
 import '@ui5/webcomponents-icons/dist/delete';
 import { TableParentRow, TableSubRow } from '../services/labelService';
 import { useMemo, useRef, useState, useEffect, } from 'react';
 import { createPortal, } from 'react-dom';
-import { setLabels, getOperations, removeOperation, subscribe, Operation } from '../store/labelStore';
+import { setLabels, getOperations, removeOperation, subscribe, Operation, getLabels } from '../store/labelStore';
 
 interface TableLabelsProps {
   data: TableParentRow[];
@@ -30,7 +29,6 @@ interface TableLabelsProps {
   onExpandChange?: (expanded: Record<string, boolean>) => void;
   headerContent?: React.ReactNode;
 }
-
 
 // --- COMPONENTE POPOVER PARA TEXTO ---
 const PopoverCell = ({ value }: { value: string }) => {
@@ -269,13 +267,49 @@ const ImagePopoverCell = ({ value }: { value: string }) => {
   );
 };
 
-// --- DEFINICIÓN DE COLUMNAS ---
+// --- COMPONENTE CEDI CELL ---
+const CediCell = ({ value }: { value: any }) => {
+  const valStr = value != null ? String(value) : '';
+  if (parseInt(valStr, 10) === 0) return <PopoverCell value="Todos los CEDI" />;
+
+  const labels = getLabels();
+  const cediLabel = labels.find(l => l.idetiqueta === 'CEDI');
+
+  let displayValue = valStr;
+  if (cediLabel && cediLabel.subRows) {
+    const found = cediLabel.subRows.find(sub => parseInt(sub.idvalor, 10) === parseInt(valStr, 10));
+    if (found) {
+      displayValue = found.valor;
+    }
+  }
+
+  return <PopoverCell value={displayValue} />;
+};
+
+// --- COMPONENTE SOCIEDAD CELL ---
+const SociedadCell = ({ value }: { value: any }) => {
+  const valStr = value != null ? String(value) : '';
+  if (parseInt(valStr, 10) === 0) return <PopoverCell value="Todas las sociedades" />;
+
+  const labels = getLabels();
+  const sociedadLabel = labels.find(l => l.idetiqueta === 'SOCIEDAD');
+
+  let displayValue = valStr;
+  if (sociedadLabel && sociedadLabel.subRows) {
+    const found = sociedadLabel.subRows.find(sub => parseInt(sub.idvalor, 10) === parseInt(valStr, 10));
+    if (found) {
+      displayValue = found.valor;
+    }
+  }
+
+  return <PopoverCell value={displayValue} />;
+};
 
 const parentColumns = [
   { Header: "Etiqueta", accessor: "etiqueta", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
   { Header: "IDETIQUETA", accessor: "idetiqueta", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
-  { Header: "IDSOCIEDAD", accessor: "idsociedad", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
-  { Header: "IDCEDI", accessor: "idcedi" },
+  { Header: "SOCIEDAD", accessor: "idsociedad", Cell: ({ cell: { value } }: any) => <SociedadCell value={value} /> },
+  { Header: "CEDI", accessor: "idcedi", Cell: ({ cell: { value } }: any) => <CediCell value={value} /> },
   { Header: "COLECCION", accessor: "coleccion", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
   { Header: "SECCION", accessor: "seccion", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
   { Header: "SECUENCIA", accessor: "secuencia" },
@@ -309,8 +343,8 @@ const childColumns = [
   { Header: "ID VALOR", accessor: "idvalor", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
   { Header: "VALOR", accessor: "valor", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
   { Header: "VALOR PADRE", accessor: "idvalorpa", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
-  { Header: "SOCIEDAD", accessor: "idsociedad", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
-  { Header: "CEDI", accessor: "idcedi", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
+  { Header: "SOCIEDAD", accessor: "idsociedad", Cell: ({ cell: { value } }: any) => <SociedadCell value={value} /> },
+  { Header: "CEDI", accessor: "idcedi", Cell: ({ cell: { value } }: any) => <CediCell value={value} /> },
   { Header: "ALIAS", accessor: "alias", Cell: ({ cell: { value } }: any) => <PopoverCell value={value} /> },
   { Header: "SECUENCIA", accessor: "secuencia" },
   {
@@ -425,12 +459,12 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
     return subscribe(updateOps);
   }, []);
 
-  
+
   useEffect(() => {
     const checkSize = () => {
       setIsMobileButton(window.innerWidth < 700);
     };
-    
+
     // Ejecutar al inicio
     checkSize();
 
@@ -552,8 +586,8 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
               onClick={() => setShowOpsDialog(true)}
               tooltip="Operaciones Pendientes" // Añadido tooltip para accesibilidad en móvil
             >
-              {isMobileButton 
-                ? `(${pendingOps.length})` 
+              {isMobileButton
+                ? `(${pendingOps.length})`
                 : `Operaciones Pendientes (${pendingOps.length})`
               }
             </Button>
