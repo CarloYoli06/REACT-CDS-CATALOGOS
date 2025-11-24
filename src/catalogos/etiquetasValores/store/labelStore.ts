@@ -354,6 +354,63 @@ export const clearOperations = () => {
   operations = [];
 };
 
+export const executeOperations = async (): Promise<{ success: boolean; errors?: any[] }> => {
+  if (operations.length === 0) {
+    return { success: true };
+  }
+
+  try {
+    // Ajusta la URL a tu endpoint real
+    const response = await fetch('/api/catalogos/execute-operations', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        // Agrega aquí tus headers de autenticación si los necesitas
+      },
+      body: JSON.stringify({ operations })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || data.status === 'ERROR') {
+      return {
+        success: false,
+        errors: data.dataRes || data.errors || [{
+          status: 'ERROR',
+          operation: 'BATCH',
+          collection: 'multiple',
+          id: 'batch',
+          error: {
+            code: 'OPERATION_FAILED',
+            message: data.messageUSR || 'Error al guardar cambios'
+          }
+        }]
+      };
+    }
+
+    // Si todo salió bien, limpiar
+    clearOperations();
+    clearStatuses();
+    
+    return { success: true };
+
+  } catch (error: any) {
+    return {
+      success: false,
+      errors: [{
+        status: 'ERROR',
+        operation: 'BATCH',
+        collection: 'multiple',
+        id: 'batch',
+        error: {
+          code: 'NETWORK_ERROR',
+          message: error.message || 'Error de conexión al guardar'
+        }
+      }]
+    };
+  }
+};
+
 export const clearStatuses = () => {
   labels = labels.map(label => {
     const newLabel = { ...label };

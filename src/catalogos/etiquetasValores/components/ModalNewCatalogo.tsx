@@ -133,32 +133,28 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
     });
   };
 
-  const handleSubmit = async () => {
-    console.log("handleSubmit called");
+// En ModalNewCatalogo.tsx
+const handleSubmit = () => { // ← Ya NO es async
+  const snapshot = { ...(latestFormRef.current || formData) };
+  
+  // Solo validación frontend
+  if (!validate(snapshot)) {
+    setShowErrorDialog(true);
+    return;
+  }
 
-    const snapshot = { ...(latestFormRef.current || formData) };
-
-    if (validate(snapshot)) {
-      try {
-        console.log("Validation passed. Calling addOperation with:", snapshot);
-        await addOperation({
-          collection: 'labels',
-          action: 'CREATE',
-          payload: {
-            ...snapshot,
-            SECUENCIA: Number(snapshot.SECUENCIA) || 0,
-          }
-        });
-        console.log("addOperation completed. Closing modal.");
-        closeModal();
-      } catch (error) {
-        console.error("Error calling addOperation:", error);
-      }
-    } else {
-      console.log("Validation failed. Errors:", errors);
-      setShowErrorDialog(true);
+  // Agregar a la cola (sin try/catch)
+  addOperation({
+    collection: 'labels',
+    action: 'CREATE',
+    payload: {
+      ...snapshot,
+      SECUENCIA: Number(snapshot.SECUENCIA) || 0,
     }
-  };
+  });
+  
+  closeModal(); // Cierra inmediatamente
+};
 
   return <>
     <Button design="Positive" icon="add" onClick={openModal} accessibleName="Crear Nuevo Catalogo">

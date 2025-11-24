@@ -1,105 +1,140 @@
-// src/catalogos/etiquetasValores/components/ValidationErrorDialog.tsx
-import { Dialog, Bar, Title, Button, List, ListItemStandard, Icon } from '@ui5/webcomponents-react';
-import { FC } from 'react';
+import { Dialog, Button, FlexBox, FlexBoxJustifyContent, MessageStrip } from '@ui5/webcomponents-react';
 
-interface ValidationErrorDialogProps {
-  open: boolean;
-  errors: Record<string, string>;
-  onClose: () => void;
-  title?: string;
+interface BackendError {
+    status: 'ERROR';
+    operation: string;
+    collection: string;
+    id: string;
+    error: {
+        code: string;
+        message: string;
+    };
 }
 
-export const ValidationErrorDialog: FC<ValidationErrorDialogProps> = ({
-  open,
-  errors,
-  onClose,
-  title = "Errores de Validación"
-}) => {
-  const errorEntries = Object.entries(errors);
-  const errorCount = errorEntries.length;
+interface ValidationErrorDialogProps {
+    open: boolean;
+    errors: any; // Puede ser errores del frontend (objeto) o del backend (array)
+    onClose: () => void;
+    title?: string;
+}
 
-  if (errorCount === 0) return null;
+function ValidationErrorDialog({ open, errors, onClose, title = "Errores de Validación" }: ValidationErrorDialogProps) {
+    
+    // Función para determinar si los errores vienen del backend
+    const isBackendError = (errors: any): errors is BackendError[] => {
+        return Array.isArray(errors) && errors.length > 0 && errors[0].hasOwnProperty('status');
+    };
 
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      style={{ width: '500px', maxWidth: '90vw' }}
-      header={
-        <Bar
-          startContent={
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Icon name="message-error" style={{ color: 'var(--sapNegativeColor)' }} />
-              <Title>{title}</Title>
+    // Función para renderizar errores del frontend
+    const renderFrontendErrors = (errors: any) => {
+        const errorEntries = Object.entries(errors);
+        if (errorEntries.length === 0) return null;
+
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {errorEntries.map(([field, message]) => (
+                    <MessageStrip 
+                        key={field}
+                        design="Negative"
+                        hideCloseButton
+                    >
+                        <strong>{field}:</strong> {message as string}
+                    </MessageStrip>
+                ))}
             </div>
-          }
-        />
-      }
-      footer={
-        <Bar
-          endContent={
-            <Button design="Emphasized" onClick={onClose}>
-              Entendido
-            </Button>
-          }
-        />
-      }
-    >
-      <div style={{ padding: '1rem' }}>
-        <p style={{ marginBottom: '1rem', color: '#666' }}>
-          Se encontraron <strong>{errorCount}</strong> {errorCount === 1 ? 'error' : 'errores'} en el formulario:
-        </p>
-        
-        <List>
-          {errorEntries.map(([field, message], index) => (
-            <ListItemStandard
-              key={index}
-              description={message}
-              style={{
-                borderLeft: '3px solid var(--sapNegativeColor)',
-                marginBottom: '0.5rem',
-                backgroundColor: '#fff5f5'
-              }}
-            >
-              <strong>{formatFieldName(field)}</strong>
-            </ListItemStandard>
-          ))}
-        </List>
-      </div>
-    </Dialog>
-  );
-};
+        );
+    };
 
-// Función helper para formatear nombres de campos
-const formatFieldName = (field: string): string => {
-  const fieldNames: Record<string, string> = {
-    IDETIQUETA: 'ID Etiqueta',
-    IDSOCIEDAD: 'ID Sociedad',
-    IDCEDI: 'ID Cedi',
-    ETIQUETA: 'Etiqueta',
-    INDICE: 'Índice',
-    COLECCION: 'Colección',
-    SECCION: 'Sección',
-    SECUENCIA: 'Secuencia',
-    IMAGEN: 'Imagen',
-    ROUTE: 'Ruta',
-    DESCRIPCION: 'Descripción',
-    IDVALOR: 'ID Valor',
-    VALOR: 'Valor',
-    IDVALORPA: 'ID Valor Padre',
-    ALIAS: 'Alias',
-    parent: 'Etiqueta Padre',
-    etiqueta: 'Etiqueta',
-    indice: 'Índice',
-    coleccion: 'Colección',
-    seccion: 'Sección',
-    secuencia: 'Secuencia',
-    imagen: 'Imagen',
-    ruta: 'Ruta',
-    descripcion: 'Descripción',
-  };
+    // Función para obtener el icono según el código de error
+    const getErrorIcon = (code: string) => {
+        switch (code) {
+            case 'DUPLICATE_KEY':
+            case 'DUPLICATE_ID':
+                return '⚠️';
+            case 'PARENT_NOT_FOUND':
+            case 'PARENT_LABEL_NOT_FOUND':
+            case 'NOT_FOUND':
+                return '🔍';
+            case 'INVALID_OPERATION':
+                return '🚫';
+            case 'INVALID_ACTION':
+            case 'INVALID_COLLECTION':
+                return '❌';
+            default:
+                return '⚠️';
+        }
+    };
 
-  return fieldNames[field] || field;
-};
+    // Función para renderizar errores del backend
+    const renderBackendErrors = (errors: BackendError[]) => {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {errors.map((error, index) => (
+                    <MessageStrip 
+                        key={index}
+                        design="Negative"
+                        hideCloseButton
+                    >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                                {getErrorIcon(error.error.code)} Operación: {error.operation} en {error.collection}
+                            </div>
+                            <div>
+                                <strong>ID:</strong> {error.id}
+                            </div>
+                            <div>
+                                <strong>Error:</strong> {error.error.message}
+                            </div>
+                            <div style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.25rem' }}>
+                                Código: {error.error.code}
+                            </div>
+                        </div>
+                    </MessageStrip>
+                ))}
+            </div>
+        );
+    };
+
+    // Determinar qué tipo de errores mostrar
+    const hasErrors = isBackendError(errors) 
+        ? errors.length > 0 
+        : Object.keys(errors).length > 0;
+
+    return (
+        <Dialog
+            open={open}
+            onClose={onClose}
+            headerText={title}
+            footer={
+                <FlexBox justifyContent={FlexBoxJustifyContent.End} fitContainer style={{ paddingBlock: '0.25rem' }}>
+                    <Button onClick={onClose}>Cerrar</Button>
+                </FlexBox>
+            }
+        >
+            <div style={{ padding: '1rem', minWidth: '400px' }}>
+                {!hasErrors ? (
+                    <MessageStrip design="Information" hideCloseButton>
+                        No hay errores para mostrar.
+                    </MessageStrip>
+                ) : isBackendError(errors) ? (
+                    <>
+                        <MessageStrip design="Warning" hideCloseButton style={{ marginBottom: '1rem' }}>
+                            Se encontraron {errors.length} error(es) al procesar la operación.
+                            Los cambios no fueron guardados.
+                        </MessageStrip>
+                        {renderBackendErrors(errors)}
+                    </>
+                ) : (
+                    <>
+                        <MessageStrip design="Warning" hideCloseButton style={{ marginBottom: '1rem' }}>
+                            Por favor, corrija los siguientes errores antes de continuar:
+                        </MessageStrip>
+                        {renderFrontendErrors(errors)}
+                    </>
+                )}
+            </div>
+        </Dialog>
+    );
+}
 
 export default ValidationErrorDialog;
