@@ -417,11 +417,25 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
 
   const [pendingOps, setPendingOps] = useState<Operation[]>([]);
   const [showOpsDialog, setShowOpsDialog] = useState(false);
+  const [isMobileButton, setIsMobileButton] = useState(false);
 
   useEffect(() => {
     const updateOps = () => setPendingOps(getOperations());
     updateOps();
     return subscribe(updateOps);
+  }, []);
+
+  
+  useEffect(() => {
+    const checkSize = () => {
+      setIsMobileButton(window.innerWidth < 700);
+    };
+    
+    // Ejecutar al inicio
+    checkSize();
+
+    window.addEventListener('resize', checkSize);
+    return () => window.removeEventListener('resize', checkSize);
   }, []);
 
   const tableData = useMemo(() => {
@@ -531,12 +545,17 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: headerContent ? '0.5rem' : '0' }}>
           <Title level="H4">Etiquetas y Valores</Title>
           {pendingOps.length > 0 && (
+            // --- 3. CAMBIO AQUÍ: Renderizado Condicional del Texto ---
             <Button
               icon="pending"
               design="Emphasized"
               onClick={() => setShowOpsDialog(true)}
+              tooltip="Operaciones Pendientes" // Añadido tooltip para accesibilidad en móvil
             >
-              Operaciones Pendientes ({pendingOps.length})
+              {isMobileButton 
+                ? `(${pendingOps.length})` 
+                : `Operaciones Pendientes (${pendingOps.length})`
+              }
             </Button>
           )}
         </div>
@@ -548,7 +567,7 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
         )}
       </div>
 
-      {/* Tabla - CAMBIO CLAVE: Eliminamos el div wrapper con overflow */}
+      {/* Tabla */}
       <AnalyticalTable
         columns={parentColumns}
         data={tableData}
@@ -557,8 +576,6 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
         groupable
         selectionMode={AnalyticalTableSelectionMode.Multiple}
         minRows={5}
-        // visibleRows={12}
-        // visibleRowCountMode="Fixed"
         visibleRows={tableData.length}
         renderRowSubComponent={renderRowSubComponent}
         tableHooks={tableHooks}

@@ -1,13 +1,16 @@
-
 import { useState, useEffect, useMemo } from "react";
 import {
   Title,
   Toolbar,
+  ToolbarSpacer,
   Input,
   InputDomRef,
-  ToolbarSpacer,
-  MessageStrip
+  MessageStrip,
+  Button,
+  Popover
 } from "@ui5/webcomponents-react";
+import "@ui5/webcomponents-icons/dist/menu2"; 
+
 import ModalNewCatalogo from "../components/ModalNewCatalogo";
 import ModalNewValor from "../components/ModalNewValor";
 import ModalDeleteCatalogo from "../components/ModalDeleteCatalogo";
@@ -24,12 +27,15 @@ export default function Catalogos() {
   const [selectedLabels, setSelectedLabels] = useState<TableParentRow[]>([]);
   const [labels, setLocalLabels] = useState<TableParentRow[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isSmall, setIsSmall] = useState(false);
+  
+  const [isSmall, setIsSmall] = useState(false); 
+  const [isMobile, setIsMobile] = useState(false);
+  
   const [selectedValores, setSelectedValores] = useState<TableSubRow[]>([]);
   const [selectedValorParent, setSelectedValorParent] = useState<TableParentRow | null>(null);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
-  // --- 1. ESTADO NUEVO PARA CONTROLAR LA VERSIÓN DE LA TABLA ---
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -47,63 +53,39 @@ export default function Catalogos() {
   }, []);
 
   useEffect(() => {
-    const mql = window.matchMedia('(max-width: 970px)');
-    const onChange = (e: MediaQueryListEvent) => setIsSmall(e.matches);
-    setIsSmall(mql.matches);
-    mql.addEventListener('change', onChange);
-    return () => mql.removeEventListener('change', onChange);
+    const handleResize = () => {
+      const width = window.innerWidth;
+      setIsSmall(width <= 1315);
+      setIsMobile(width <= 970);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-
-  // --- 2. HANDLE SAVE SIMPLIFICADO Y POTENTE ---
   const handleSave = async () => {
     setSaveMessage("Datos guardados correctamente.");
-
-    // 1. Cargar los datos nuevos
     await fetchLabels();
-
-    // 2. Limpiar selecciones
     setSelectedLabels([]);
     setSelectedValores([]);
     setSelectedValorParent(null);
-
-    // 3. LA SOLUCIÓN NUCLEAR:
-    // Al cambiar este número, React destruye la tabla actual y crea una nueva.
-    // Esto fuerza a que la tabla recalcule alturas desde CERO, sin heredar errores visuales.
-    // Es el equivalente programático a "apagar y volver a encender" el componente.
     setTableRefreshKey(prev => prev + 1);
-
     setTimeout(() => {
       setSaveMessage("");
     }, 3000);
   };
-  // ------------------------------------------------
 
   const handleDeleteConfirmLabel = () => {
     selectedLabels.forEach(label => {
-      addOperation({
-        collection: 'labels',
-        action: 'DELETE',
-        payload: {
-          id: label.idetiqueta,
-        }
-      });
+      addOperation({ collection: 'labels', action: 'DELETE', payload: { id: label.idetiqueta } });
     });
     setSelectedLabels([]);
   };
 
   const handleDeleteConfirmValor = () => {
     if (!selectedValorParent) return;
-
     selectedValores.forEach(valor => {
-      addOperation({
-        collection: 'values',
-        action: 'DELETE',
-        payload: {
-          id: valor.idvalor,
-          IDETIQUETA: selectedValorParent.idetiqueta,
-        }
-      });
+      addOperation({ collection: 'values', action: 'DELETE', payload: { id: valor.idvalor, IDETIQUETA: selectedValorParent.idetiqueta } });
     });
     setSelectedValores([]);
     setSelectedValorParent(null);
@@ -118,20 +100,12 @@ export default function Catalogos() {
       label.seccion?.toLowerCase().includes(term)
     );
   });
+
   const preparedData = useMemo(() => {
     return filteredLabels.map(row => {
-      // Construimos el ID tal como lo usa la tabla internamente
       const rowId = `parent-${row.idetiqueta}`;
-
-      // Verificamos si este ID está marcado como verdadero en expandedRows
       const isRowExpanded = !!expandedRows[rowId];
-
-      return {
-        ...row,
-        // Forzamos la propiedad isExpanded en el dato mismo.
-        // React Table leerá esto al inicializarse.
-        isExpanded: isRowExpanded
-      };
+      return { ...row, isExpanded: isRowExpanded };
     });
   }, [filteredLabels, expandedRows]);
 
@@ -139,45 +113,121 @@ export default function Catalogos() {
     setExpandedRows(prev => ({ ...prev, ...changedExpanded }));
   };
 
+  // Contenido del menú móvil
+  const mobileMenuContent = (
+    <>
+        <ModalNewCatalogo compact={false} />
+        <ModalNewValor
+          compact={false}
+          preSelectedParent={selectedLabels.length === 1 ? selectedLabels[0] : null}
+        />
+        <ModalDeleteCatalogo
+          label={selectedLabels.length > 0 ? selectedLabels[0] : null}
+          compact={false}
+          onDeleteConfirm={handleDeleteConfirmLabel}
+        />
+        <ModalDeleteValor
+          compact={false}
+          valor={selectedValores.length > 0 ? selectedValores[0] : null}
+          parentLabel={selectedValorParent}
+          onDeleteConfirm={handleDeleteConfirmValor}
+        />
+        <ModalUpdateCatalogo
+          label={selectedLabels.length === 1 ? selectedLabels[0] : null}
+          compact={false}
+        />
+        <ModalUpdateValor
+          compact={false}
+          valorToEdit={selectedValores.length === 1 ? selectedValores[0] : null}
+          parentLabel={selectedValorParent}
+        />
+    </>
+  );
+
   const headerContent = (
     <>
       <Toolbar
+        key={isMobile ? "mobile-toolbar" : "desktop-toolbar"}
         style={{
           padding: "0.5rem",
           gap: "0.5rem",
           marginBottom: "1rem",
         }}
       >
-        <ModalNewCatalogo compact={isSmall} />
-        <ModalNewValor
-          compact={isSmall}
-          preSelectedParent={selectedLabels.length === 1 ? selectedLabels[0] : null}
-        />
+        {isMobile ? (
+          // MÓVIL: Botón Hamburguesa
+          <Button 
+              id="menu-settings-btn"
+              icon="menu2" 
+              design="Transparent"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              tooltip="Opciones de gestión"
+          />
+        ) : (
+          // ESCRITORIO: Grupo de botones envuelto en DIV
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <ModalNewCatalogo compact={isSmall} />
+            <ModalNewValor
+              compact={isSmall}
+              preSelectedParent={selectedLabels.length === 1 ? selectedLabels[0] : null}
+            />
+            <ModalDeleteCatalogo
+              label={selectedLabels.length > 0 ? selectedLabels[0] : null}
+              compact={isSmall}
+              onDeleteConfirm={handleDeleteConfirmLabel}
+            />
+            <ModalDeleteValor
+              compact={isSmall}
+              valor={selectedValores.length > 0 ? selectedValores[0] : null}
+              parentLabel={selectedValorParent}
+              onDeleteConfirm={handleDeleteConfirmValor}
+            />
+            <ModalUpdateCatalogo
+              label={selectedLabels.length === 1 ? selectedLabels[0] : null}
+              compact={isSmall}
+            />
+            <ModalUpdateValor
+              compact={isSmall}
+              valorToEdit={selectedValores.length === 1 ? selectedValores[0] : null}
+              parentLabel={selectedValorParent}
+            />
+          </div>
+        )}
 
-        <ModalDeleteCatalogo
-          label={selectedLabels.length > 0 ? selectedLabels[0] : null}
-          compact={isSmall}
-          onDeleteConfirm={handleDeleteConfirmLabel}
-        />
-        <ModalDeleteValor
-          compact={isSmall}
-          valor={selectedValores.length > 0 ? selectedValores[0] : null}
-          parentLabel={selectedValorParent}
-          onDeleteConfirm={handleDeleteConfirmValor}
-        />
-
-        <ModalUpdateCatalogo
-          label={selectedLabels.length === 1 ? selectedLabels[0] : null}
-          compact={isSmall}
-        />
-        <ModalUpdateValor
-          compact={isSmall}
-          valorToEdit={selectedValores.length === 1 ? selectedValores[0] : null}
-          parentLabel={selectedValorParent}
-        />
         <ToolbarSpacer />
         <ModalSaveChanges onSave={handleSave} compact={isSmall} />
       </Toolbar>
+      
+      {isMobile && (
+        <Popover
+          opener="menu-settings-btn"
+          open={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
+          placement="Bottom"
+          headerText="Gestión"
+        >
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.5rem', 
+                padding: '1rem',
+                minWidth: '220px', 
+                alignItems: 'stretch' 
+            }}>
+                {mobileMenuContent}
+                
+                <div style={{ borderTop: '1px solid #e5e5e5', margin: '0.5rem 0' }}></div>
+                
+                <Button 
+                  design="Transparent" 
+                  onClick={() => setIsMenuOpen(false)}
+                  style={{ width: '100%' }}
+                >
+                  Cerrar menú
+                </Button>
+            </div>
+        </Popover>
+      )}
 
       <Input
         placeholder="Buscar etiqueta, colección o descripción..."
@@ -207,17 +257,16 @@ export default function Catalogos() {
         </Title>
       </div>
 
-      {/* --- 3. AQUÍ USAMOS LA KEY MÁGICA --- */}
       <div style={{ flex: 1, overflow: 'hidden', padding: '0 1rem 1rem 1rem' }}>
         <TableLabels 
-            key={tableRefreshKey} // Tu solución del remount (NO LA QUITES)
-            data={preparedData}   // <--- CAMBIO AQUÍ: Usamos los datos preparados
+            key={tableRefreshKey} 
+            data={preparedData} 
             initialExpanded={expandedRows}
             onExpandChange={handleExpandChange}
             onSelectionChange={setSelectedLabels}
             onValorSelectionChange={(valores, parent) => {
-            setSelectedValores(valores || []);
-            setSelectedValorParent(parent);
+              setSelectedValores(valores || []);
+              setSelectedValorParent(parent);
             }}
             headerContent={headerContent}
         />
