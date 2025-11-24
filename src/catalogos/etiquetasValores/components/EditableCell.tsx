@@ -484,3 +484,32 @@ export const EditableCell = ({
     </div>
   );
 };
+
+export const ParentValueViewCell = ({ value }: { value: any }) => {
+  const labelText = React.useMemo(() => {
+    if (!value) return "";
+      
+    const allLabels = getLabels();
+      
+    for (const label of allLabels) {
+      if (label.subRows) {
+        const match = label.subRows.find(v => v.idvalor === String(value));
+        if (match) {
+          return match.valor; 
+        }
+      }
+    }
+    return value; 
+  }, [value]);
+
+  return (
+    <div style={{ 
+        whiteSpace: 'nowrap', 
+        overflow: 'hidden', 
+        textOverflow: 'ellipsis',
+        width: '100%' 
+    }} title={String(labelText)}>
+        {labelText}
+    </div>
+  );
+};

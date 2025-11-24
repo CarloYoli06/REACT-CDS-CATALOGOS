@@ -76,26 +76,28 @@ export const IndiceEditor = ({ value, onSave, onCancel }: EditorProps) => {
   };
 
   return (
-    <MultiInput
-      value={inputValue}
-      onInput={(e) => setInputValue(e.target.value)}
-      tokens={tokens.map((t, i) => <Token key={i} text={t} />)}
-      onTokenDelete={handleTokenDelete}
-      onKeyDown={handleKeyDown}
-      onBlur={commitChanges}
-      style={{ width: "100%" }}
-      showValueHelpIcon={false}
-    />
+    <div onClick={(e) => e.stopPropagation()} style={{ width: "100%" }}>
+      <MultiInput
+        value={inputValue}
+        onInput={(e) => setInputValue(e.target.value)}
+        tokens={tokens.map((t, i) => <Token key={i} text={t} />)}
+        onTokenDelete={handleTokenDelete}
+        onKeyDown={handleKeyDown}
+        onBlur={commitChanges}
+        style={{ width: "100%" }}
+        showValueHelpIcon={false}
+      />
+    </div>
   );
 };
 
-// --- EDITOR DE CATALOGOS (SOCIEDAD | CEDI) ---
 interface CatalogEditorProps extends EditorProps {
   catalogTag: "SOCIEDAD" | "CEDI";
 }
 
 export const CatalogEditor = ({ value, onSave, onCancel, catalogTag }: CatalogEditorProps) => {
   const [options, setOptions] = useState<TableSubRow[]>([]);
+  const [inputValue, setInputValue] = useState("");
   const isSelectingRef = React.useRef(false);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null); 
 
@@ -110,18 +112,35 @@ export const CatalogEditor = ({ value, onSave, onCancel, catalogTag }: CatalogEd
     };
   }, [catalogTag]);
 
+  useEffect(() => {
+    const foundOption = options.find(o => o.idvalor === value);
+    if (foundOption) {
+      setInputValue(foundOption.valor);
+    } else {
+      setInputValue(value || "");
+    }
+  }, [value, options]);
+
+  const filteredOptions = React.useMemo(() => {
+    if (!inputValue) return options;
+    const lowerInput = inputValue.toLowerCase();
+    return options.filter(opt => 
+      opt.valor.toLowerCase().includes(lowerInput) || 
+      opt.idvalor.toLowerCase().includes(lowerInput)
+    );
+  }, [options, inputValue]);
+
   const handleChange = (e: any) => {
     if (e.detail.item) {
       isSelectingRef.current = true;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
       const selectedId = e.detail.item.dataset.id;
+      const selectedText = e.detail.item.text;
+
+      setInputValue(selectedText);
       onSave(selectedId); 
     }
-  };
-  
-  const getOptionId = (text: string) => {
-    const match = options.find(opt => opt.valor === text);
-    return match ? match.idvalor : text;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -129,33 +148,61 @@ export const CatalogEditor = ({ value, onSave, onCancel, catalogTag }: CatalogEd
       isSelectingRef.current = true;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       // @ts-ignore
-      const valToSave = getOptionId(e.target.value);
-      onSave(valToSave); 
+      const inputText = inputValue;
+      const match = options.find(opt => opt.valor === inputText || opt.idvalor === inputText);
+      if (match) {
+        onSave(match.idvalor);
+      } else {
+        onCancel();
+      }
     }
     if(e.key === "Escape") onCancel();
   };
 
-  const handleBlur = (e: any) => {
-    const currentInputValue = e.target.value;
+  const handleBlur = () => {
+    const currentText = inputValue;
 
     timeoutRef.current = setTimeout(() => {
       if (!isSelectingRef.current) {
-        const valToSave = getOptionId(currentInputValue);
-        onSave(valToSave);
+        if (!currentText || currentText.trim() === "") {
+          onSave("");
+          return;
+        }
+
+        const match = options.find(opt => 
+          opt.valor === currentText || 
+          opt.idvalor === currentText 
+        );
+
+        if (match) {
+          onSave(match.idvalor);
+        } else {
+          onCancel();
+        }
       }
     }, 200);
   };
 
+  const handleInput = (e: any) => {
+    setInputValue(e.target.value);
+  };
+
   return (
+    <div 
+      onClick={(e) => e.stopPropagation()} 
+      onDoubleClick={(e) => e.stopPropagation()} 
+      style={{ width: "100%" }}
+    >
     <ComboBox
-      value={value || ""}
+      value={inputValue}
+      onInput={handleInput}
       onSelectionChange={handleChange}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
       style={{ width: "100%" }}
-      filter="Contains"
+      filter="None"
     >
-      {options.map(opt => (
+      {filteredOptions.map(opt => (
         <ComboBoxItem 
           text={opt.valor}
           key={opt.idvalor} 
@@ -164,6 +211,7 @@ export const CatalogEditor = ({ value, onSave, onCancel, catalogTag }: CatalogEd
         />
       ))}
     </ComboBox>
+    </div>
   );
 };
 
@@ -182,7 +230,11 @@ export const ParentValueEditor = ({ value, onSave, onCancel }: EditorProps) => {
   };
 
   return (
-    <div onKeyDown={handleKeyDown} style={{ width: '100%' }}>
+    <div 
+      onKeyDown={handleKeyDown}
+      onClick={(e) => e.stopPropagation()}
+      style={{ width: '100%' }}
+    >
       <ValueHelpSelector
         data={allData} 
         value={value}

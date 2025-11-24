@@ -17,7 +17,7 @@ import '@ui5/webcomponents-icons/dist/delete';
 import { TableParentRow, TableSubRow } from '../services/labelService';
 import { useMemo, useRef, useState, useEffect, } from 'react';
 import { setLabels, getOperations, removeOperation, subscribe, Operation } from '../store/labelStore';
-import { EditableCell, ImagePopoverCell, TokenViewCell, CatalogViewCell } from './EditableCell';
+import { EditableCell, ImagePopoverCell, TokenViewCell, CatalogViewCell, ParentValueViewCell } from './EditableCell';
 
 interface TableLabelsProps {
   data: TableParentRow[];
@@ -114,8 +114,16 @@ const childColumns = [
   { 
     Header: "ID VALOR PADRE", 
     accessor: "idvalorpa", 
-    Cell: (props: any) => <EditableCell {...props} editorType="parentSelector" /> 
-  },  
+    width: 200, 
+    minWidth: 150,
+    Cell: (props: any) => (
+        <EditableCell 
+            {...props} 
+            editorType="parentSelector" 
+            viewComponent={ParentValueViewCell}
+        /> 
+    )
+  },
   { 
     Header: "SOCIEDAD",
     accessor: "idsociedad", 
