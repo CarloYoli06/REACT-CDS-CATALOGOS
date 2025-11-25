@@ -2,7 +2,7 @@ import { Button, MessageBox, MessageBoxType, MessageBoxAction } from '@ui5/webco
 import { Modals } from '@ui5/webcomponents-react/Modals';
 import { saveChanges } from '../services/labelService';
 import { useState } from 'react';
-import { clearStatuses, getLabels, setLabels, clearOperations } from '../store/labelStore';
+import { clearStatuses, getLabels, setLabels, clearOperations, getOperations } from '../store/labelStore';
 
 interface ModalSaveChangesProps {
     onSave: () => void;
@@ -11,6 +11,7 @@ interface ModalSaveChangesProps {
 
 function ModalSaveChanges({ onSave, compact = false }: ModalSaveChangesProps) {
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [confirmationMessage, setConfirmationMessage] = useState("¿Seguro que quieres guardar los cambios?");
 
     const handleSaveChanges = async () => {
         const result = await saveChanges();
@@ -45,12 +46,38 @@ function ModalSaveChanges({ onSave, compact = false }: ModalSaveChangesProps) {
         }
     };
 
+    const handleSaveClick = () => {
+        const operations = getOperations();
+        const labelsToDelete = operations.filter(op => op.collection === 'labels' && op.action === 'DELETE');
+
+        let hasDangerousDeletions = false;
+        const currentLabels = getLabels();
+
+        for (const op of labelsToDelete) {
+            const labelId = op.payload.id;
+            const label = currentLabels.find(l => l.idetiqueta === labelId);
+            // Check if the label has subRows (values)
+            // Even if values are also marked for deletion, the warning is about the catalog having values.
+            if (label && label.subRows && label.subRows.length > 0) {
+                hasDangerousDeletions = true;
+                break;
+            }
+        }
+
+        if (hasDangerousDeletions) {
+            setConfirmationMessage("Usted está por borrar un catálogo con valores adjuntos, de borrarse se perderán todos los valores asignados a este catálogo ¿Continuar?");
+        } else {
+            setConfirmationMessage("¿Seguro que quieres guardar los cambios?");
+        }
+        setShowConfirmDialog(true);
+    };
+
     return (
         <>
             <Button
                 design="Emphasized"
                 icon="save"
-                onClick={() => setShowConfirmDialog(true)}
+                onClick={handleSaveClick}
                 accessibleName="Guardar cambios"
             >
                 {!compact && 'Guardar cambios'}
@@ -67,7 +94,7 @@ function ModalSaveChanges({ onSave, compact = false }: ModalSaveChangesProps) {
                     setShowConfirmDialog(false);
                 }}
             >
-                ¿Seguro que quieres guardar los cambios?
+                {confirmationMessage}
             </MessageBox>
         </>
     );

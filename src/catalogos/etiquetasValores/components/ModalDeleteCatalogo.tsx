@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Button, MessageBox } from '@ui5/webcomponents-react';
-import { TableParentRow } from '../services/labelService'; 
+import { TableParentRow } from '../services/labelService';
 
 interface ModalDeleteCatalogoProps {
     compact?: boolean;
-    label: TableParentRow | null; 
+    label: TableParentRow | null;
     onDeleteConfirm: (label: TableParentRow) => void;
 }
 
@@ -30,7 +30,7 @@ function ModalDeleteCatalogo({ compact = false, label, onDeleteConfirm }: ModalD
                 onDeleteConfirm(label);
             }
         }
-        
+
         // 3. Cerramos el modal SIEMPRE, pase lo que pase
         setOpen(false);
     };
@@ -39,12 +39,12 @@ function ModalDeleteCatalogo({ compact = false, label, onDeleteConfirm }: ModalD
 
     return (
         <>
-            <Button 
+            <Button
                 design="Negative"
                 icon="delete"
                 accessibleName="Eliminar Catalogo"
                 onClick={handleOpen}
-                disabled={isDisabled} 
+                disabled={isDisabled}
             >
                 {!compact && 'Eliminar Catalogo'}
             </Button>
@@ -54,9 +54,13 @@ function ModalDeleteCatalogo({ compact = false, label, onDeleteConfirm }: ModalD
                 onClose={handleClose}
                 // Usamos el string directo para evitar líos de tipos
                 type={"Confirm" as any}
-                titleText="Confirmar Eliminación" 
+                titleText="Confirmar Eliminación"
             >
-                {label ? `¿Seguro que quieres eliminar el Catálogo: ${label.etiqueta}?` : ''}
+                {label ? (
+                    (label.subRows && label.subRows.length > 0)
+                        ? `Está seguro de borrar el catálogo ${label.etiqueta}? Tiene valores asignados`
+                        : `¿Seguro que quieres eliminar el Catálogo: ${label.etiqueta}?`
+                ) : ''}
             </MessageBox>
         </>
     );
