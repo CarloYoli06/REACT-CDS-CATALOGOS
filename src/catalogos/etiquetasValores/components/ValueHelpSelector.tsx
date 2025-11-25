@@ -122,7 +122,7 @@ export const ValueHelpSelector: FC<ValueHelpSelectorProps> = ({
                     items.push(
                         <ComboBoxItem
                             key={`${label.idetiqueta}-${valor.idvalor}`}
-                            text={valor.valor}
+                            text={`${valor.valor} (${valor.idvalor})`}
                             data-idvalor={valor.idvalor}
                         />
                     );
