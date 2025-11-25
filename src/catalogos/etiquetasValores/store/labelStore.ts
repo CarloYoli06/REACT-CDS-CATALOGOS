@@ -61,8 +61,8 @@ const updateLocalState = (operation: Operation) => {
     labels = labels.map(label => {
       if (label.idetiqueta === targetId) {
         // FIC: Preserve 'Positive' status if it was a new item, otherwise set to 'Warning'
-        const newStatus = label.status === 'Positive' ? 'Positive' : 'Warning';
-        
+        const newStatus = label.status === 'Positive' ? 'Positive' : 'Critical';
+        console.log('newStatus', newStatus);
         // FIC: Cascade visual update for IDETIQUETA
         let newSubRows = label.subRows;
         if (updates.IDETIQUETA) {
@@ -145,7 +145,7 @@ const updateLocalState = (operation: Operation) => {
         const updatedSubRows = label.subRows.map(subRow => {
           if (subRow.idvalor === valorId) {
              // FIC: Preserve 'Positive' status if it was a new item
-            const newStatus = subRow.status === 'Positive' ? 'Positive' : 'Warning';
+            const newStatus = subRow.status === 'Positive' ? 'Positive' : 'Critical';
             return {
               ...subRow,
               idvalor: updates.IDVALOR !== undefined ? updates.IDVALOR : subRow.idvalor,

@@ -454,7 +454,7 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
                 style={{ width: '100%', padding: '0.5rem' }}
               >
                 <FlexBox direction={FlexBoxDirection.Column}>
-                  <span style={{ fontWeight: 'bold', color: op.action === 'DELETE' ? 'var(--sapNegativeColor)' : 'var(--sapPositiveColor)' }}>
+                  <span style={{ fontWeight: 'bold', color: op.action === 'DELETE' ? 'var(--sapNegativeColor)' : op.action === 'UPDATE' ? 'var(--sapCriticalColor)' : 'var(--sapPositiveColor)' }}>
                     {op.action} {op.collection === 'labels' ? 'Etiqueta' : 'Valor'}
                   </span>
                   <span style={{ fontSize: '0.8rem', color: 'var(--sapContent_LabelColor)' }}>

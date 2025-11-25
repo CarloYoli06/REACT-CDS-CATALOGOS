@@ -98,7 +98,9 @@ export const ValueHelpSelector: FC<ValueHelpSelectorProps> = ({
             .map(label => ({
                 ...label,
                 subRows: (label.subRows || []).filter(valor =>
-                    valor.valor.toLowerCase().includes(lowerSearchTerm)
+                    Object.values(valor).some(val => 
+                        String(val).toLowerCase().includes(lowerSearchTerm)
+                    )
                 ),
             }))
             .filter(label => label.subRows.length > 0);
@@ -251,21 +253,10 @@ export const ValueHelpSelector: FC<ValueHelpSelectorProps> = ({
                         <React.Fragment key={label.idetiqueta}>
                             {/* Header de grupo más compacto y sutil */}
                             <ListItemGroup
-                                style={{
-                                    backgroundColor: '#fafafa',
-                                    padding: '0.4rem 1rem',
-                                    fontWeight: '600',
-                                    fontSize: '0.8rem',
-                                    color: '#666',
-                                    borderTop: '1px solid #e8e8e8',
-                                    borderBottom: '1px solid #e8e8e8',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
-                                    minHeight: 'auto'
-                                }}
-                            >
-                                {label.etiqueta}
-                            </ListItemGroup>
+                                
+                                headerText={label.etiqueta}
+                                
+                            />
                             {label.subRows.map((valor, index) => (
                                 <React.Fragment key={`${label.idetiqueta}-${valor.idvalor}`}>
                                     <ListItemStandard
@@ -276,9 +267,9 @@ export const ValueHelpSelector: FC<ValueHelpSelectorProps> = ({
                                             borderBottom: index < label.subRows.length - 1 ? '1px solid #f5f5f5' : 'none',
                                             fontSize: '0.95rem'
                                         }}
-                                    >
-                                        {valor.valor}
-                                    </ListItemStandard>
+                                        text={`${valor.valor} (${valor.idvalor})`}
+                                        
+                                    />
                                 </React.Fragment>
                             ))}
                         </React.Fragment>
