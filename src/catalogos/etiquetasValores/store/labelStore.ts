@@ -185,6 +185,71 @@ const updateLocalState = (operation: Operation) => {
   }
 };
 
+const refreshStatuses = () => {
+  // 1. Reset all statuses to 'None' (or base state)
+  labels = labels.map(label => ({
+    ...label,
+    status: 'None',
+    subRows: label.subRows.map(sub => ({ ...sub, status: 'None' }))
+  }));
+
+  // 2. Apply statuses based on active operations
+  operations.forEach(op => {
+    const action = op.action;
+    const collection = op.collection;
+    // Determine target ID. 
+    // For CREATE, payload usually has the ID. For UPDATE/DELETE, payload.id is the target.
+    // However, the payload structure varies. 
+    // CREATE Label: payload.IDETIQUETA
+    // CREATE Value: payload.IDVALOR
+    // UPDATE/DELETE: payload.id
+    
+    let targetId: string | undefined;
+    let parentId: string | undefined;
+
+    if (action === 'CREATE') {
+        targetId = collection === 'labels' ? op.payload.IDETIQUETA : op.payload.IDVALOR;
+        parentId = collection === 'values' ? op.payload.IDETIQUETA : undefined;
+    } else {
+        targetId = op.payload.id;
+        parentId = collection === 'values' ? op.payload.IDETIQUETA : undefined;
+    }
+
+    if (!targetId) return;
+
+    if (collection === 'labels') {
+        labels = labels.map(l => {
+            if (l.idetiqueta === targetId) {
+                let newStatus = l.status;
+                if (action === 'CREATE') newStatus = 'Positive';
+                else if (action === 'UPDATE') newStatus = l.status === 'Positive' ? 'Positive' : 'Critical';
+                else if (action === 'DELETE') newStatus = 'Negative';
+                
+                return { ...l, status: newStatus };
+            }
+            return l;
+        });
+    } else if (collection === 'values' && parentId) {
+        labels = labels.map(l => {
+            if (l.idetiqueta === parentId) {
+                const newSubRows = l.subRows.map(sub => {
+                    if (sub.idvalor === targetId) {
+                        let newStatus = sub.status;
+                        if (action === 'CREATE') newStatus = 'Positive';
+                        else if (action === 'UPDATE') newStatus = sub.status === 'Positive' ? 'Positive' : 'Critical';
+                        else if (action === 'DELETE') newStatus = 'Negative';
+                        return { ...sub, status: newStatus };
+                    }
+                    return sub;
+                });
+                return { ...l, subRows: newSubRows };
+            }
+            return l;
+        });
+    }
+  });
+};
+
 export const addOperation = (operation: Operation) => {
   const opId = operation.id || generateId();
   const opWithId: Operation = { ...operation, id: opId };
@@ -195,6 +260,18 @@ export const addOperation = (operation: Operation) => {
 
   // 1. Handle DELETE
   if (opWithId.action === 'DELETE') {
+    // Check if a DELETE operation already exists for this ID
+    const existingDeleteIndex = operations.findIndex(op =>
+        op.action === 'DELETE' &&
+        op.collection === collection &&
+        op.payload.id === targetId
+    );
+
+    if (existingDeleteIndex !== -1) {
+        console.log('Operación DELETE ya existe para:', targetId);
+        return; // Ignore duplicate delete
+    }
+
     // A. Check for CREATE (Undo Create)
     const createOpIndex = operations.findIndex(op =>
       op.action === 'CREATE' &&
@@ -221,6 +298,7 @@ export const addOperation = (operation: Operation) => {
           return label;
         });
       }
+      refreshStatuses();
       notifyListeners();
       return;
     }
@@ -236,6 +314,22 @@ export const addOperation = (operation: Operation) => {
       console.log('Eliminando operación UPDATE previa por DELETE para:', targetId);
       operations.splice(updateOpIndex, 1);
     }
+
+    // C. Cascade Delete for Labels: Remove all pending operations for its values
+    if (collection === 'labels') {
+        const labelId = targetId;
+        const initialLength = operations.length;
+        operations = operations.filter(op => {
+            if (op.collection === 'values' && op.payload.IDETIQUETA === labelId) {
+                console.log('Cascade Delete: Eliminando operación de valor pendiente:', op);
+                return false;
+            }
+            return true;
+        });
+        if (operations.length < initialLength) {
+            console.log(`Se eliminaron ${initialLength - operations.length} operaciones de valores por eliminación de etiqueta.`);
+        }
+    }
   }
 
   // 2. Handle UPDATE logic (Merge or Add)
@@ -248,8 +342,13 @@ export const addOperation = (operation: Operation) => {
     );
 
     if (deleteOpIndex !== -1) {
-       console.log('Eliminando operación DELETE previa por UPDATE para:', targetId);
+       // If item is deleted, we generally shouldn't allow updates unless it's a "Restore" action.
+       // But if the user forces an update, we might want to remove the DELETE and apply the UPDATE (effectively restoring + updating).
+       console.log('Eliminando operación DELETE previa por UPDATE (Restaurar) para:', targetId);
        operations.splice(deleteOpIndex, 1);
+       // Note: If we remove DELETE, we need to ensure the item is "restored" in local state if it was hidden?
+       // But our DELETE logic in updateLocalState just marks it as 'Negative', so it's still there.
+       // So removing the DELETE op and adding UPDATE op should work fine, status will become Critical.
     }
 
     const existingUpdateOp = operations.find(op =>
@@ -303,6 +402,7 @@ export const addOperation = (operation: Operation) => {
 
   // 4. Update Local State
   updateLocalState(opWithId);
+  refreshStatuses();
   notifyListeners();
 };
 
@@ -331,7 +431,7 @@ export const removeOperation = (opId: string) => {
            });
       }
   } else if ((op.action === 'UPDATE' || op.action === 'DELETE') && op.originalValues) {
-      const original = op.originalValues;
+      const original = { ...op.originalValues, status: 'None' }; // Force status to None
       const collection = op.collection;
 
       if (collection === 'labels') {
@@ -349,6 +449,7 @@ export const removeOperation = (opId: string) => {
   }
 
   notifyListeners();
+  refreshStatuses();
 };
 
 export const getOperations = () => operations;
@@ -359,11 +460,9 @@ export const clearOperations = () => {
 
 export const clearStatuses = () => {
   labels = labels.map(label => {
-    const newLabel = { ...label };
-    delete newLabel.status;
+    const newLabel = { ...label, status: 'None' };
     newLabel.subRows = newLabel.subRows.map(subRow => {
-      const newSubRow = { ...subRow };
-      delete newSubRow.status;
+      const newSubRow = { ...subRow, status: 'None' };
       return newSubRow;
     });
     return newLabel;

@@ -142,7 +142,7 @@ const handleSubmit = () => {
       SECUENCIA: Number(snapshot.secuencia) || 0,
       INDICE: snapshot.indice,
       IMAGEN: snapshot.imagen,
-      RUTA: snapshot.ruta,
+      ROUTE: snapshot.ruta,
       DESCRIPCION: snapshot.descripcion,
     }
   };

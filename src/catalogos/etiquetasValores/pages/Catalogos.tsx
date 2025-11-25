@@ -50,7 +50,7 @@ export default function Catalogos() {
   // *** Estados para manejo de errores del backend ***
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errors, setErrors] = useState<any>([]);
-  const [isSaving, setIsSaving] = useState(false);
+
 
   // cargar etiquetas
   useEffect(() => {
@@ -78,10 +78,10 @@ export default function Catalogos() {
 
   // *** AQUÍ SE HACE TODO EL GUARDADO ***
   const handleSave = async () => {
-    setIsSaving(true);
+    // setIsSaving(true); // Removed unused state
 
     const result = await saveChanges();
-    setIsSaving(false);
+    // setIsSaving(false); // Removed unused state
 
     if (!result.success) {
       setErrors(
@@ -171,7 +171,7 @@ const filteredLabels = labels
 
     return null;
   })
-  .filter(Boolean);
+  .filter((row): row is TableParentRow => row !== null);
 
   const preparedData = useMemo(() => {
     return filteredLabels.map(row => {

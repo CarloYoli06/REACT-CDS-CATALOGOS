@@ -118,7 +118,7 @@ function ValidationErrorDialog({ open, errors, onClose, title = "Errores de Vali
                     </MessageStrip>
                 ) : isBackendError(errors) ? (
                     <>
-                        <MessageStrip design="Warning" hideCloseButton style={{ marginBottom: '1rem' }}>
+                        <MessageStrip design="Critical" hideCloseButton style={{ marginBottom: '1rem' }}>
                             Se encontraron {errors.length} error(es) al procesar la operación.
                             Los cambios no fueron guardados.
                         </MessageStrip>
@@ -126,7 +126,7 @@ function ValidationErrorDialog({ open, errors, onClose, title = "Errores de Vali
                     </>
                 ) : (
                     <>
-                        <MessageStrip design="Warning" hideCloseButton style={{ marginBottom: '1rem' }}>
+                        <MessageStrip design="Critical" hideCloseButton style={{ marginBottom: '1rem' }}>
                             Por favor, corrija los siguientes errores antes de continuar:
                         </MessageStrip>
                         {renderFrontendErrors(errors)}

@@ -1,5 +1,5 @@
 // src/catalogos/etiquetasValores/services/labelService.ts
-import { getLabels, setLabels, getOperations, clearOperations, clearStatuses } from '../store/labelStore';
+import {  setLabels, getOperations, clearOperations, clearStatuses } from '../store/labelStore';
 import { getDbServer } from '../../../share/services/settingsService';
 
 // Interfaces para la respuesta de la API
