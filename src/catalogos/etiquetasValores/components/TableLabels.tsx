@@ -410,7 +410,7 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
         groupable
         selectionMode={AnalyticalTableSelectionMode.Multiple}
         minRows={5}
-        visibleRows={tableData.length}
+        // visibleRows={tableData.length}
         renderRowSubComponent={renderRowSubComponent}
         tableHooks={tableHooks}
         scaleWidthMode="Smart"

@@ -1,5 +1,3 @@
-// src/catalogos/etiquetasValores/components/ModalUpdateCatalogo.tsx
-
 import { Button, FlexBox, FlexBoxJustifyContent, Form, FormGroup, FormItem, Input, Label, Dialog, MultiInput, Token} from '@ui5/webcomponents-react';
 import { useState, useEffect, useRef } from 'react';
 import { addOperation } from '../store/labelStore';
@@ -32,11 +30,11 @@ function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProp
     const latestFormRef = useRef<TableParentRow>(initialFormState);
     const [errors, setErrors] = useState<any>({});
 
-    // --- Estados para el MultiInput ---
+    // Estados para el MultiInput 
     const [inputValue, setInputValue] = useState('');
     const [indiceTokens, setIndiceTokens] = useState<string[]>([]);
 
-    // --- Estado para la visibilidad del Modal ---
+    // Estado para la visibilidad del Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
 
      const [showErrorDialog, setShowErrorDialog] = useState(false);
@@ -61,7 +59,6 @@ function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProp
         }
     }, [label]); // Depende solo de 'label'
 
-    // --- (La función validate es idéntica) ---
     const validate = (data: Partial<TableParentRow>) => {
         const newErrors: any = {};
         if (!data.etiqueta) newErrors.etiqueta = 'ETIQUETA es requerido.';
@@ -82,8 +79,6 @@ function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProp
         return isValid;
     };
 
-
-    // --- (La función handleChange es idéntica) ---
     const handleChange = (e: any) => {
         const current = e.currentTarget;
         const target = e.target;
@@ -103,15 +98,13 @@ function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProp
         });
     };
 
-    // --- Manejadores del Modal ---
+    // Manejadores del Modal
     const openModal = () => {
         // Asegura que solo se abra si hay un label seleccionado
         if (!label) {
             console.error("No se puede actualizar, no hay ningún catálogo seleccionado.");
             return;
         }
-        // Los datos ya se cargaron con el useEffect.
-        // Solo reseteamos errores y abrimos.
         setErrors({});
         setIsModalOpen(true);
     };
@@ -129,8 +122,8 @@ function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProp
         setErrors({});
     };
 
-    // --- handleSubmit ya no recibe 'close' como argumento ---
-const handleSubmit = () => { // ← Ya NO es async
+    // handleSubmit ya no recibe 'close' como argumento
+const handleSubmit = () => { 
   const snapshot: TableParentRow = { ...(latestFormRef.current || formData) };
 
   if (!validate(snapshot)) {
@@ -143,7 +136,14 @@ const handleSubmit = () => { // ← Ya NO es async
     updates: {
       IDETIQUETA: snapshot.idetiqueta,
       IDSOCIEDAD: Number(snapshot.idsociedad) || 0,
-      // ... resto de campos
+      IDCEDI: Number(snapshot.idcedi) || 0,
+      COLECCION: snapshot.coleccion,
+      SECCION: snapshot.seccion,
+      SECUENCIA: Number(snapshot.secuencia) || 0,
+      INDICE: snapshot.indice,
+      IMAGEN: snapshot.imagen,
+      RUTA: snapshot.ruta,
+      DESCRIPCION: snapshot.descripcion,
     }
   };
 

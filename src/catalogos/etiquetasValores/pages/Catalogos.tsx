@@ -20,8 +20,15 @@ import ModalSaveChanges from "../components/ModalSaveChanges";
 import ModalUpdateCatalogo from "../components/ModalUpdateCatalogo";
 import ModalUpdateValor from "../components/ModalUpdateValor";
 import ValidationErrorDialog from "../components/ValidationErrorDialog";
-import { fetchLabels, TableParentRow, TableSubRow } from "../services/labelService";
-import { getLabels, subscribe, addOperation, executeOperations } from "../store/labelStore";
+
+import {
+  fetchLabels,
+  saveChanges,
+  TableParentRow,
+  TableSubRow
+} from "../services/labelService";
+
+import { getLabels, subscribe, addOperation } from "../store/labelStore";
 import TableLabels from "../components/TableLabels";
 
 export default function Catalogos() {
@@ -40,24 +47,24 @@ export default function Catalogos() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
 
+  // *** Estados para manejo de errores del backend ***
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errors, setErrors] = useState<any>([]);
   const [isSaving, setIsSaving] = useState(false);
 
+  // cargar etiquetas
   useEffect(() => {
     fetchLabels();
   }, []);
 
+  // suscribir al store
   useEffect(() => {
     setLocalLabels(getLabels());
-    const unsubscribe = subscribe(() => {
-      setLocalLabels(getLabels());
-    });
-    return () => {
-      unsubscribe();
-    };
+    const unsub = subscribe(() => setLocalLabels(getLabels()));
+    return () => unsub();
   }, []);
 
+  // responsive
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
@@ -65,72 +72,111 @@ export default function Catalogos() {
       setIsMobile(width <= 970);
     };
     handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // *** AQUÍ SE HACE TODO EL GUARDADO ***
   const handleSave = async () => {
     setIsSaving(true);
-    const result = await executeOperations();
+
+    const result = await saveChanges();
     setIsSaving(false);
 
     if (!result.success) {
-      setErrors(result.errors);
+      setErrors(
+        result.errors ||
+        [{
+          status: "ERROR",
+          operation: "BATCH",
+          collection: "multiple",
+          id: "batch",
+          error: {
+            code: "OPERATION_FAILED",
+            message: result.message || "Error al guardar cambios"
+          }
+        }]
+      );
+
       setShowErrorDialog(true);
       return;
     }
 
+    // Éxito
     setSaveMessage("Datos guardados correctamente.");
     await fetchLabels();
+
     setSelectedLabels([]);
     setSelectedValores([]);
     setSelectedValorParent(null);
-    setTableRefreshKey(prev => prev + 1);
-    setTimeout(() => {
-      setSaveMessage("");
-    }, 3000);
+
+    setTableRefreshKey((p) => p + 1);
+
+    setTimeout(() => setSaveMessage(""), 3000);
   };
 
   const handleDeleteConfirmLabel = () => {
     selectedLabels.forEach(label => {
-      addOperation({ collection: 'labels', action: 'DELETE', payload: { id: label.idetiqueta } });
-      if (label.subRows && label.subRows.length > 0) {
-        label.subRows.forEach(valor => {
-          addOperation({
-            collection: 'values',
-            action: 'DELETE',
-            payload: { id: valor.idvalor, IDETIQUETA: label.idetiqueta }
-          });
-        });
-      }
+      addOperation({
+        collection: "labels",
+        action: "DELETE",
+        payload: { id: label.idetiqueta }
+      });
     });
     setSelectedLabels([]);
   };
 
   const handleDeleteConfirmValor = () => {
     if (!selectedValorParent) return;
+
     selectedValores.forEach(valor => {
-      addOperation({ collection: 'values', action: 'DELETE', payload: { id: valor.idvalor, IDETIQUETA: selectedValorParent.idetiqueta } });
+      addOperation({
+        collection: "values",
+        action: "DELETE",
+        payload: {
+          id: valor.idvalor,
+          IDETIQUETA: selectedValorParent.idetiqueta
+        }
+      });
     });
+
     setSelectedValores([]);
     setSelectedValorParent(null);
   };
 
-  const filteredLabels = labels.filter((label) => {
+const filteredLabels = labels
+  .map(label => {
     const term = searchTerm.toLowerCase();
-    return (
+
+    const parentMatch =
       label.etiqueta?.toLowerCase().includes(term) ||
       label.descripcion?.toLowerCase().includes(term) ||
       label.coleccion?.toLowerCase().includes(term) ||
-      label.seccion?.toLowerCase().includes(term)
+      label.seccion?.toLowerCase().includes(term);
+
+    const childrenMatch = label.subRows?.some(v =>
+      (v.valor?.toLowerCase().includes(term) ||
+       v.descripcion?.toLowerCase().includes(term) ||
+       v.alias?.toLowerCase().includes(term))
     );
-  });
+
+    // ⭐⭐ CLAVE: si coincide o padre o hijo, regresamos el padre **COMPLETO**
+    if (parentMatch || childrenMatch) {
+      return {
+        ...label,
+        // ⭐ NO filtramos los hijos, se regresan tal cual
+        subRows: label.subRows
+      };
+    }
+
+    return null;
+  })
+  .filter(Boolean);
 
   const preparedData = useMemo(() => {
     return filteredLabels.map(row => {
-      const rowId = `parent-${row.idetiqueta}`;
-      const isRowExpanded = !!expandedRows[rowId];
-      return { ...row, isExpanded: isRowExpanded };
+      const id = `parent-${row.idetiqueta}`;
+      return { ...row, isExpanded: !!expandedRows[id] };
     });
   }, [filteredLabels, expandedRows]);
 
@@ -172,11 +218,7 @@ export default function Catalogos() {
     <>
       <Toolbar
         key={isMobile ? "mobile-toolbar" : "desktop-toolbar"}
-        style={{
-          padding: "0.5rem",
-          gap: "0.5rem",
-          marginBottom: "1rem",
-        }}
+        style={{ padding: "0.5rem", gap: "0.5rem", marginBottom: "1rem" }}
       >
         {isMobile ? (
           <Button
@@ -184,10 +226,9 @@ export default function Catalogos() {
             icon="menu2"
             design="Transparent"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            tooltip="Opciones de gestión"
           />
         ) : (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
             <ModalNewCatalogo compact={isSmall} />
             <ModalNewValor
               compact={isSmall}
@@ -217,9 +258,10 @@ export default function Catalogos() {
         )}
 
         <ToolbarSpacer />
+
         <ModalSaveChanges
-          onSave={handleSave}
           compact={isSmall}
+          onSave={handleSave}
         />
       </Toolbar>
 
@@ -232,21 +274,16 @@ export default function Catalogos() {
           headerText="Gestión"
         >
           <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem',
-            padding: '1rem',
-            minWidth: '220px',
-            alignItems: 'stretch'
+            display: "flex",
+            flexDirection: "column",
+            padding: "1rem",
+            gap: "0.5rem"
           }}>
             {mobileMenuContent}
-
-            <div style={{ borderTop: '1px solid #e5e5e5', margin: '0.5rem 0' }}></div>
 
             <Button
               design="Transparent"
               onClick={() => setIsMenuOpen(false)}
-              style={{ width: '100%' }}
             >
               Cerrar menú
             </Button>
@@ -257,15 +294,10 @@ export default function Catalogos() {
       <Input
         placeholder="Buscar etiqueta, colección o descripción..."
         showClearIcon
-        onInput={(e) =>
-          setSearchTerm((e.target as unknown as InputDomRef).value)
-        }
-        style={{
-          marginBottom: "1rem",
-          width: "100%",
-          maxWidth: "500px",
-        }}
+        onInput={(e) => setSearchTerm((e.target as InputDomRef).value)}
+        style={{ marginBottom: "1rem", maxWidth: "500px", width: "100%" }}
       />
+
       {saveMessage && (
         <MessageStrip design="Positive" style={{ marginBottom: "1rem" }}>
           {saveMessage}
@@ -275,11 +307,9 @@ export default function Catalogos() {
   );
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '1rem 1rem 0 1rem' }}>
-        <Title level="H1" size="H2" style={{ marginBottom: "1rem" }}>
-          Catálogos y Valores
-        </Title>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "1rem 1rem 0 1rem" }}>
+        <Title level="H1" size="H2">Catálogos y Valores</Title>
       </div>
 
       <ValidationErrorDialog
@@ -289,15 +319,15 @@ export default function Catalogos() {
         title="Errores al Guardar Cambios"
       />
 
-      <div style={{ flex: 1, overflow: 'hidden', padding: '0 1rem 1rem 1rem' }}>
+      <div style={{ flex: 1, overflow: "hidden", padding: "0 1rem 1rem" }}>
         <TableLabels
           key={tableRefreshKey}
           data={preparedData}
           initialExpanded={expandedRows}
           onExpandChange={handleExpandChange}
           onSelectionChange={setSelectedLabels}
-          onValorSelectionChange={(valores, parent) => {
-            setSelectedValores(valores || []);
+          onValorSelectionChange={(vals, parent) => {
+            setSelectedValores(vals || []);
             setSelectedValorParent(parent);
           }}
           headerContent={headerContent}

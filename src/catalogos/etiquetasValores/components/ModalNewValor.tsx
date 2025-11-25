@@ -30,11 +30,10 @@ const initialFormState = {
 
 interface ModalNewValorProps {
   compact?: boolean;
-  // NUEVO PROP: Recibimos el padre opcionalmente
   preSelectedParent?: TableParentRow | null;
 }
 
-function ModalNewValor({ compact = false, preSelectedParent }: ModalNewValorProps) { // <--- Desestructuramos el prop
+function ModalNewValor({compact = false, preSelectedParent }: ModalNewValorProps) { // <--- Desestructuramos el prop
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [formData, setFormData] = useState(initialFormState);
@@ -253,7 +252,7 @@ function ModalNewValor({ compact = false, preSelectedParent }: ModalNewValorProp
 
   return (
     <>
-      <Button design="Emphasized" icon="add" onClick={openModal} accessibleName="Crear Nuevo Valor">
+      <Button design="Emphasized" icon="add" onClick={openModal} accessibleName="Crear Nuevo Valor" disabled={!preSelectedParent}>
         {!compact && 'Crear Nuevo Valor'}
       </Button>
       <ValidationErrorDialog
