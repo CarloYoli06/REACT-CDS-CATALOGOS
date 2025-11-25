@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
+  Input,
   MultiInput,
   Token,
   ComboBox,
@@ -240,6 +241,40 @@ export const ParentValueEditor = ({ value, onSave, onCancel }: EditorProps) => {
         value={value}
         onSelect={handleSelect}
         placeholder="Seleccionar Padre..."
+      />
+    </div>
+  );
+};
+
+// --- EDITOR NUMÉRICO ---
+export const NumericEditor = ({ value, onSave, onCancel }: EditorProps) => {
+  const [inputValue, setInputValue] = useState(value !== undefined && value !== null ? String(value) : "");
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.stopPropagation();
+      return;
+    }
+
+    if (e.key === "Enter") {
+      onSave(inputValue);
+    }
+    
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      onCancel();
+    }
+  };
+
+  return (
+    <div onClick={(e) => e.stopPropagation()} style={{ width: "100%" }}>
+      <Input
+        type="Number"
+        value={inputValue}
+        onInput={(e) => setInputValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={() => onSave(inputValue)}
+        style={{ width: "100%" }}
       />
     </div>
   );

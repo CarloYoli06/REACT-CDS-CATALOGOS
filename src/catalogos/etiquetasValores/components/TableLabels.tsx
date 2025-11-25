@@ -77,7 +77,7 @@ const parentColumns = [
   { 
     Header: "SECUENCIA", 
     accessor: "secuencia",
-    Cell: (props: any) => <EditableCell {...props} />
+    Cell: (props: any) => <EditableCell {...props} editorType="numeric"/>
   },
   {
     Header: "INDICE",
@@ -106,7 +106,7 @@ const childColumns = [
     accessor: "idvalor", 
     Cell: (props: any) => <EditableCell {...props} />
   },
-{ 
+  { 
     Header: "VALOR", 
     accessor: "valor", 
     Cell: (props: any) => <EditableCell {...props} /> 
@@ -156,7 +156,7 @@ const childColumns = [
   { 
     Header: "SECUENCIA", 
     accessor: "secuencia",
-    Cell: (props: any) => <EditableCell {...props} />
+    Cell: (props: any) => <EditableCell {...props} editorType="numeric"/>
   },
   {
     Header: "IMAGEN",

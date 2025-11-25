@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Input } from "@ui5/webcomponents-react";
 import { addOperation, getLabels } from "../store/labelStore";
 import { TableParentRow, TableSubRow } from "../services/labelService";
-import { IndiceEditor, CatalogEditor, ParentValueEditor } from "./Editors";
+import { IndiceEditor, CatalogEditor, ParentValueEditor, NumericEditor } from "./Editors";
 import '@ui5/webcomponents-icons/dist/background'; 
 import { Icon, Tokenizer, Token } from '@ui5/webcomponents-react';
 
@@ -372,7 +372,7 @@ interface EditableCellProps {
   row: { original: TableParentRow | TableSubRow; index: number };
   column: { id: string };
   viewComponent: React.ComponentType<{ value: any; onSave?: (val: any) => void }>;
-  editorType?: 'text' | 'indice' | 'sociedad' | 'cedi' | 'parentSelector';
+  editorType?: 'text' | 'indice' | 'sociedad' | 'cedi' | 'parentSelector' | 'numeric';
   viewProps?: any;
 }
 
@@ -441,6 +441,8 @@ export const EditableCell = ({
         return <CatalogEditor value={value} catalogTag="CEDI" onSave={handleSave} onCancel={handleCancel} />;
       case 'parentSelector':
         return <ParentValueEditor value={value} onSave={handleSave} onCancel={handleCancel} />;
+      case 'numeric':
+        return <NumericEditor value={value} onSave={handleSave} onCancel={handleCancel} />;
       case 'text':
       default:
         return (
