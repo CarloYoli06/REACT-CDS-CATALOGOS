@@ -130,7 +130,10 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
   }, [catalogTag]);
 
   useEffect(() => {
-    const foundOption = options.find(o => o.idvalor === value);
+    const foundOption = options.find(o => 
+      o.idvalor === String(value) || 
+      (value !== "" && o.idvalor !== "" && !isNaN(Number(o.idvalor)) && !isNaN(Number(value)) && Number(o.idvalor) === Number(value))
+    );
     if (foundOption) {
       setInputValue(foundOption.valor);
     } else {
