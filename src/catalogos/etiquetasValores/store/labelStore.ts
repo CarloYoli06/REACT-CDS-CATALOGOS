@@ -375,3 +375,17 @@ export const clearLabelsCache = () => {
   labels = [];
   notifyListeners();
 };
+
+interface CellCoordinates {
+  rowId: string;
+  columnId: string;
+}
+
+let activeEditCell: CellCoordinates | null = null;
+
+export const getActiveEditCell = () => activeEditCell;
+
+export const setActiveEditCell = (coords: CellCoordinates | null) => {
+  activeEditCell = coords;
+  notifyListeners();
+};

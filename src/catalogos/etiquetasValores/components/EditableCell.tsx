@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@ui5/webcomponents-react";
-import { addOperation, getLabels } from "../store/labelStore";
+import { addOperation, getLabels, getActiveEditCell, setActiveEditCell, subscribe } from "../store/labelStore";
 import { TableParentRow, TableSubRow } from "../services/labelService";
 import { IndiceEditor, CatalogEditor, ParentValueEditor, NumericEditor, UniqueIdEditor } from "./Editors";
 import '@ui5/webcomponents-icons/dist/background'; 
@@ -25,6 +25,33 @@ const COLUMN_TO_PAYLOAD_MAP: { [key: string]: string } = {
   idvalor: "IDVALOR",     
   idvalorpa: "IDVALORPA"
 };
+
+const PARENT_NAVIGATION_ORDER = [
+  "etiqueta",
+  "idetiqueta", 
+  "idsociedad",
+  "idcedi",
+  "coleccion",
+  "seccion",
+  "secuencia",
+  "indice",
+  "imagen",
+  "ruta",
+  "descripcion"
+];
+
+const CHILD_NAVIGATION_ORDER = [
+  "idvalor",
+  "valor",
+  "idvalorpa",
+  "idsociedad", 
+  "idcedi",
+  "alias",
+  "secuencia",
+  "imagen",
+  "ruta",
+  "descripcion"
+];
 
 export const PopoverCell = ({ value }: { value: string }) => {
   const cellRef = useRef<HTMLDivElement>(null);
@@ -334,42 +361,43 @@ interface CatalogViewCellProps {
 
 export const CatalogViewCell = ({ value, catalogTag }: CatalogViewCellProps) => {
   const labelText = React.useMemo(() => {
-      if (!value) return "";
+  if (!value) return "";
       
-      const allLabels = getLabels();
-      const parentCatalog = allLabels.find(l => l.idetiqueta === catalogTag);
+  const allLabels = getLabels();
+  const parentCatalog = allLabels.find(l => l.idetiqueta === catalogTag);
       
-      if (parentCatalog && parentCatalog.subRows) {
-          const match = parentCatalog.subRows.find(row => {
-              if (row.idvalor === String(value)) return true;
-              
-              if (value !== "" && row.idvalor !== "" && !isNaN(Number(row.idvalor)) && !isNaN(Number(value))) {
-                return Number(row.idvalor) === Number(value);
-              }
-              
-              return false;
-          });
+  if (parentCatalog && parentCatalog.subRows) {
+    const match = parentCatalog.subRows.find(row => {
+      if (row.idvalor === String(value)) return true;
           
-          return match ? match.valor : value; 
+      if (value !== "" && row.idvalor !== "" && !isNaN(Number(row.idvalor)) && !isNaN(Number(value))) {
+        return Number(row.idvalor) === Number(value);
       }
-      return value;
+          
+      return false;
+    });
+      
+    return match ? match.valor : value; 
+  }
+  return value;
   }, [value, catalogTag]);
 
   return (
     <div style={{ 
-        whiteSpace: 'nowrap', 
-        overflow: 'hidden', 
-        textOverflow: 'ellipsis',
-        width: '100%' 
-    }} title={labelText}>
-        {labelText}
+      whiteSpace: 'nowrap', 
+      overflow: 'hidden', 
+      textOverflow: 'ellipsis',
+      width: '100%' 
+    }} 
+      title={labelText}>
+      {labelText}
     </div>
   );
 };
 
 interface EditableCellProps {
   value: any;
-  row: { original: TableParentRow | TableSubRow; index: number };
+  row: { original: TableParentRow | TableSubRow; index: number; id: string };
   column: { id: string };
   viewComponent: React.ComponentType<{ value: any; onSave?: (val: any) => void }>;
   editorType?: 'text' | 'indice' | 'sociedad' | 'cedi' | 'parentSelector' | 'numeric' | 'uniqueId';
@@ -378,7 +406,7 @@ interface EditableCellProps {
 
 export const EditableCell = ({
   value: initialValue,
-  row: { original: rowData },
+  row,
   column: { id: columnId },
   viewComponent: ViewComponent,
   editorType = 'text',
@@ -386,6 +414,20 @@ export const EditableCell = ({
 }: EditableCellProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(initialValue);
+
+  const rowData = row.original;
+  const rowId = row.id;
+
+  useEffect(() => {
+    const checkFocus = () => {
+      const active = getActiveEditCell();
+      if (active && active.rowId === rowId && active.columnId === columnId) {
+        setIsEditing(true);
+      }
+    };
+    const unsubscribe = subscribe(checkFocus);
+    return () => unsubscribe();
+  }, [rowId, columnId]);
 
   useEffect(() => {
     setValue(initialValue);
@@ -431,26 +473,47 @@ export const EditableCell = ({
     setIsEditing(false);
   };
 
+  const handleTab = (e: React.KeyboardEvent, currentValue: any) => {
+    e.preventDefault();
+    handleSave(currentValue);
+
+    const isParent = 'parent' in rowData && rowData.parent === true;
+    const navigationList = isParent ? PARENT_NAVIGATION_ORDER : CHILD_NAVIGATION_ORDER;
+    
+    const currentIndex = navigationList.indexOf(columnId);
+    if (currentIndex !== -1 && currentIndex < navigationList.length - 1) {
+      const nextColumnId = navigationList[currentIndex + 1];
+        setActiveEditCell({ rowId: rowId, columnId: nextColumnId });
+      } else {
+        setActiveEditCell(null);
+      }
+  };
+
   const renderEditor = () => {
+    const commonProps = {
+      value,
+      onSave: handleSave,
+      onCancel: handleCancel,
+      onTab: (e: any, val: any) => handleTab(e, val) 
+    };
+
     switch (editorType) {
       case 'indice':
-        return <IndiceEditor value={value} onSave={handleSave} onCancel={handleCancel} />;
+        return <IndiceEditor {...commonProps} />;
       case 'sociedad':
-        return <CatalogEditor value={value} catalogTag="SOCIEDAD" onSave={handleSave} onCancel={handleCancel} />;
+        return <CatalogEditor catalogTag="SOCIEDAD" {...commonProps} />;
       case 'cedi':
-        return <CatalogEditor value={value} catalogTag="CEDI" onSave={handleSave} onCancel={handleCancel} />;
+        return <CatalogEditor catalogTag="CEDI" {...commonProps} />;
       case 'parentSelector':
-        return <ParentValueEditor value={value} onSave={handleSave} onCancel={handleCancel} />;
+        return <ParentValueEditor {...commonProps} />;
       case 'numeric':
-        return <NumericEditor value={value} onSave={handleSave} onCancel={handleCancel} />;
+        return <NumericEditor {...commonProps} />;
       case 'uniqueId':
         const isParent = 'parent' in rowData && rowData.parent === true;
         const currentId = isParent ? (rowData as TableParentRow).idetiqueta : (rowData as TableSubRow).idvalor;
         return (
           <UniqueIdEditor 
-            value={value} 
-            onSave={handleSave} 
-            onCancel={handleCancel}
+            {...commonProps}
             idType={isParent ? 'label' : 'value'}
             currentId={currentId}
           />
@@ -466,7 +529,11 @@ export const EditableCell = ({
               if(e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation();
               if(e.key === "Enter") handleSave();
               if(e.key === "Escape") handleCancel();
+              if(e.key === "Tab") {
+                handleTab(e, value);
+              }
             }}
+            
             autoFocus
             style={{ width: '100%' }}
           />

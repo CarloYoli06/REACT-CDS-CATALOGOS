@@ -16,11 +16,12 @@ interface EditorProps {
   value: any;
   onSave: (newValue: any) => void;
   onCancel: () => void;
+  onTab?: (e: React.KeyboardEvent, currentValue: any) => void;
   rowOriginal?: any;
 }
 
 // --- EDITOR DE INDICE ---
-export const IndiceEditor = ({ value, onSave, onCancel }: EditorProps) => {
+export const IndiceEditor = ({ value, onSave, onCancel, onTab }: EditorProps) => {
   const [tokens, setTokens] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState("");
 
@@ -74,6 +75,21 @@ export const IndiceEditor = ({ value, onSave, onCancel }: EditorProps) => {
       e.stopPropagation();
       onCancel();
     }
+    if (e.key === "Tab") {
+      if (onTab) {
+        e.preventDefault(); 
+        e.stopPropagation();
+
+        let finalTokens = [...tokens];
+        const textPending = inputValue.trim();
+            
+        if (textPending !== "" && !tokens.includes(textPending)) {
+          finalTokens.push(textPending);
+        }
+            
+        onTab(e, finalTokens.join(','));
+      }
+    }
   };
 
   return (
@@ -96,7 +112,7 @@ interface CatalogEditorProps extends EditorProps {
   catalogTag: "SOCIEDAD" | "CEDI";
 }
 
-export const CatalogEditor = ({ value, onSave, onCancel, catalogTag }: CatalogEditorProps) => {
+export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: CatalogEditorProps) => {
   const [options, setOptions] = useState<TableSubRow[]>([]);
   const [inputValue, setInputValue] = useState("");
   const isSelectingRef = React.useRef(false);
@@ -158,6 +174,24 @@ export const CatalogEditor = ({ value, onSave, onCancel, catalogTag }: CatalogEd
       }
     }
     if(e.key === "Escape") onCancel();
+    if (e.key === "Tab") {
+      if (onTab) {
+        e.preventDefault(); 
+        e.stopPropagation();
+
+        const currentText = inputValue;
+        const match = options.find(opt => 
+          opt.valor === currentText || 
+          opt.idvalor === currentText 
+        );
+
+        if (match) {
+          onTab(e, match.idvalor);
+        } else {
+          onTab(e, ""); 
+        }
+      }
+    }
   };
 
   const handleBlur = () => {
@@ -217,7 +251,7 @@ export const CatalogEditor = ({ value, onSave, onCancel, catalogTag }: CatalogEd
 };
 
 // --- EDITOR DE VALOR PADRE ---
-export const ParentValueEditor = ({ value, onSave, onCancel }: EditorProps) => {
+export const ParentValueEditor = ({ value, onSave, onCancel, onTab }: EditorProps) => {
   const allData = useMemo(() => getLabels(), []);
 
   const handleSelect = (selectedValue: string | null) => {
@@ -228,6 +262,13 @@ export const ParentValueEditor = ({ value, onSave, onCancel }: EditorProps) => {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") onCancel();
+    if (e.key === "Tab") {
+      if (onTab) {
+        e.preventDefault(); 
+        e.stopPropagation();
+        onTab(e, value); 
+      }
+    }
   };
 
   return (
@@ -247,7 +288,7 @@ export const ParentValueEditor = ({ value, onSave, onCancel }: EditorProps) => {
 };
 
 // --- EDITOR NUMÉRICO ---
-export const NumericEditor = ({ value, onSave, onCancel }: EditorProps) => {
+export const NumericEditor = ({ value, onSave, onCancel, onTab }: EditorProps) => {
   const [inputValue, setInputValue] = useState(value !== undefined && value !== null ? String(value) : "");
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -263,6 +304,13 @@ export const NumericEditor = ({ value, onSave, onCancel }: EditorProps) => {
     if (e.key === "Escape") {
       e.stopPropagation();
       onCancel();
+    }
+    if (e.key === "Tab") {
+      if (onTab) {
+        e.preventDefault(); 
+        e.stopPropagation();
+        onTab(e, inputValue); 
+      }
     }
   };
 
@@ -286,7 +334,7 @@ interface UniqueIdEditorProps extends EditorProps {
   parentId?: string; 
 }
 
-export const UniqueIdEditor = ({ value, onSave, onCancel, idType, currentId }: UniqueIdEditorProps) => {
+export const UniqueIdEditor = ({ value, onSave, onCancel, onTab, idType, currentId }: UniqueIdEditorProps) => {
   const [inputValue, setInputValue] = useState(value?.toString() || "");
   const [errorState, setErrorState] = useState<"None" | "Negative">("None"); 
   const [errorMessage, setErrorMessage] = useState("");
@@ -331,16 +379,21 @@ export const UniqueIdEditor = ({ value, onSave, onCancel, idType, currentId }: U
       e.stopPropagation();
       return;
     }
-
     if (e.key === "Enter") {
       if (errorState !== "Negative" && inputValue.trim() !== "") {
         onSave(inputValue);
       }
     }
-    
     if (e.key === "Escape") {
       e.stopPropagation();
       onCancel();
+    }
+    if (e.key === "Tab") {
+      if (onTab) {
+        e.preventDefault(); 
+        e.stopPropagation();
+        onTab(e, inputValue); 
+      }
     }
   };
 
