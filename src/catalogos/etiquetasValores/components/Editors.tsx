@@ -279,3 +279,89 @@ export const NumericEditor = ({ value, onSave, onCancel }: EditorProps) => {
     </div>
   );
 };
+
+interface UniqueIdEditorProps extends EditorProps {
+  idType: 'label' | 'value';
+  currentId: string;
+  parentId?: string; 
+}
+
+export const UniqueIdEditor = ({ value, onSave, onCancel, idType, currentId }: UniqueIdEditorProps) => {
+  const [inputValue, setInputValue] = useState(value?.toString() || "");
+  const [errorState, setErrorState] = useState<"None" | "Negative">("None"); 
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    const val = inputValue.trim();
+      
+    if (!val) {
+      setErrorState("None"); 
+      return;
+    }
+
+    const allLabels = getLabels();
+    let exists = false;
+
+    if (idType === 'label') {
+      exists = allLabels.some(l => l.idetiqueta === val && l.idetiqueta !== currentId);
+    } else {
+      for (const label of allLabels) {
+        if (label.subRows) {
+          const match = label.subRows.find(v => v.idvalor === val && v.idvalor !== currentId);
+          if (match) {
+            exists = true;
+            break;
+          }
+        }
+      }
+    }
+
+    if (exists) {
+      setErrorState("Negative"); 
+      setErrorMessage(`El ID "${val}" ya existe en el sistema.`);
+    } else {
+      setErrorState("None");
+      setErrorMessage("");
+    }
+
+  }, [inputValue, idType, currentId]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.stopPropagation();
+      return;
+    }
+
+    if (e.key === "Enter") {
+      if (errorState !== "Negative" && inputValue.trim() !== "") {
+        onSave(inputValue);
+      }
+    }
+    
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      onCancel();
+    }
+  };
+
+  return (
+    <div onClick={(e) => e.stopPropagation()} style={{ width: "100%" }}>
+      <Input
+        value={inputValue}
+        // @ts-ignore - Por si TS se pone exigente con el string literal
+        valueState={errorState}
+        valueStateMessage={errorMessage ? <div slot="valueStateMessage">{errorMessage}</div> : undefined}
+        onInput={(e) => setInputValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={() => {
+          if (errorState !== "Negative" && inputValue.trim() !== "") {
+            onSave(inputValue);
+          } else {
+            onCancel();
+          }
+        }}
+        style={{ width: "100%" }}
+      />
+    </div>
+  );
+};

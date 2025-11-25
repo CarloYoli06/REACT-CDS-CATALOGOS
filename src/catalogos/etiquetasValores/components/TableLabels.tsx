@@ -38,7 +38,7 @@ const parentColumns = [
   { 
     Header: "IDETIQUETA", 
     accessor: "idetiqueta", 
-    Cell: (props: any) => <EditableCell {...props} /> 
+    Cell: (props: any) => <EditableCell {...props} editorType="uniqueId"/> 
   },
 { 
     Header: "IDSOCIEDAD", 
@@ -104,7 +104,7 @@ const childColumns = [
   { 
     Header: "ID VALOR", 
     accessor: "idvalor", 
-    Cell: (props: any) => <EditableCell {...props} />
+    Cell: (props: any) => <EditableCell {...props} editorType="uniqueId"/>
   },
   { 
     Header: "VALOR", 

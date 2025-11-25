@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Input } from "@ui5/webcomponents-react";
 import { addOperation, getLabels } from "../store/labelStore";
 import { TableParentRow, TableSubRow } from "../services/labelService";
-import { IndiceEditor, CatalogEditor, ParentValueEditor, NumericEditor } from "./Editors";
+import { IndiceEditor, CatalogEditor, ParentValueEditor, NumericEditor, UniqueIdEditor } from "./Editors";
 import '@ui5/webcomponents-icons/dist/background'; 
 import { Icon, Tokenizer, Token } from '@ui5/webcomponents-react';
 
@@ -372,7 +372,7 @@ interface EditableCellProps {
   row: { original: TableParentRow | TableSubRow; index: number };
   column: { id: string };
   viewComponent: React.ComponentType<{ value: any; onSave?: (val: any) => void }>;
-  editorType?: 'text' | 'indice' | 'sociedad' | 'cedi' | 'parentSelector' | 'numeric';
+  editorType?: 'text' | 'indice' | 'sociedad' | 'cedi' | 'parentSelector' | 'numeric' | 'uniqueId';
   viewProps?: any;
 }
 
@@ -443,6 +443,18 @@ export const EditableCell = ({
         return <ParentValueEditor value={value} onSave={handleSave} onCancel={handleCancel} />;
       case 'numeric':
         return <NumericEditor value={value} onSave={handleSave} onCancel={handleCancel} />;
+      case 'uniqueId':
+        const isParent = 'parent' in rowData && rowData.parent === true;
+        const currentId = isParent ? (rowData as TableParentRow).idetiqueta : (rowData as TableSubRow).idvalor;
+        return (
+          <UniqueIdEditor 
+            value={value} 
+            onSave={handleSave} 
+            onCancel={handleCancel}
+            idType={isParent ? 'label' : 'value'}
+            currentId={currentId}
+          />
+        );
       case 'text':
       default:
         return (
