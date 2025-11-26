@@ -14,11 +14,9 @@ import "@ui5/webcomponents-icons/dist/menu2";
 
 import ModalNewCatalogo from "../components/ModalNewCatalogo";
 import ModalNewValor from "../components/ModalNewValor";
-import ModalDeleteCatalogo from "../components/ModalDeleteCatalogo";
-import ModalDeleteValor from "../components/ModalDeleteValor";
+import ModalDelete from "../components/ModalDelete";
 import ModalSaveChanges from "../components/ModalSaveChanges";
-import ModalUpdateCatalogo from "../components/ModalUpdateCatalogo";
-import ModalUpdateValor from "../components/ModalUpdateValor";
+import ModalUpdate from "../components/ModalUpdate";
 import ValidationErrorDialog from "../components/ValidationErrorDialog";
 
 import {
@@ -191,25 +189,19 @@ const filteredLabels = labels
         compact={false}
         preSelectedParent={selectedLabels.length === 1 ? selectedLabels[0] : null}
       />
-      <ModalDeleteCatalogo
-        label={selectedLabels.length > 0 ? selectedLabels[0] : null}
-        compact={false}
-        onDeleteConfirm={handleDeleteConfirmLabel}
+      <ModalDelete
+          compact={isSmall}
+          selectedLabels={selectedLabels}
+          selectedValores={selectedValores}
+          selectedValorParent={selectedValorParent}
+          onDeleteConfirmCatalogo={handleDeleteConfirmLabel}
+          onDeleteConfirmValor={handleDeleteConfirmValor}
       />
-      <ModalDeleteValor
-        compact={false}
-        valor={selectedValores.length > 0 ? selectedValores[0] : null}
-        parentLabel={selectedValorParent}
-        onDeleteConfirm={handleDeleteConfirmValor}
-      />
-      <ModalUpdateCatalogo
-        label={selectedLabels.length === 1 ? selectedLabels[0] : null}
-        compact={false}
-      />
-      <ModalUpdateValor
-        compact={false}
-        valorToEdit={selectedValores.length === 1 ? selectedValores[0] : null}
-        parentLabel={selectedValorParent}
+      <ModalUpdate
+          compact={isSmall}
+          selectedLabels={selectedLabels}
+          selectedValores={selectedValores}
+          selectedValorParent={selectedValorParent}
       />
     </>
   );
@@ -234,26 +226,20 @@ const filteredLabels = labels
               compact={isSmall}
               preSelectedParent={selectedLabels.length === 1 ? selectedLabels[0] : null}
             />
-            <ModalDeleteCatalogo
-              label={selectedLabels.length > 0 ? selectedLabels[0] : null}
+          <ModalDelete
               compact={isSmall}
-              onDeleteConfirm={handleDeleteConfirmLabel}
-            />
-            <ModalDeleteValor
+              selectedLabels={selectedLabels}
+              selectedValores={selectedValores}
+              selectedValorParent={selectedValorParent}
+              onDeleteConfirmCatalogo={handleDeleteConfirmLabel}
+              onDeleteConfirmValor={handleDeleteConfirmValor}
+          />
+          <ModalUpdate
               compact={isSmall}
-              valor={selectedValores.length > 0 ? selectedValores[0] : null}
-              parentLabel={selectedValorParent}
-              onDeleteConfirm={handleDeleteConfirmValor}
-            />
-            <ModalUpdateCatalogo
-              label={selectedLabels.length === 1 ? selectedLabels[0] : null}
-              compact={isSmall}
-            />
-            <ModalUpdateValor
-              compact={isSmall}
-              valorToEdit={selectedValores.length === 1 ? selectedValores[0] : null}
-              parentLabel={selectedValorParent}
-            />
+              selectedLabels={selectedLabels}
+              selectedValores={selectedValores}
+              selectedValorParent={selectedValorParent}
+          />
           </div>
         )}
 

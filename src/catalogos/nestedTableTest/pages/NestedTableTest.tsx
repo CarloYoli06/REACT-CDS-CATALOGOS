@@ -11,11 +11,9 @@ import {
 } from "@ui5/webcomponents-react";
 import ModalNewCatalogo from "../../etiquetasValores/components/ModalNewCatalogo";
 import ModalNewValor from "../../etiquetasValores/components/ModalNewValor";
-import ModalDeleteCatalogo from "../../etiquetasValores/components/ModalDeleteCatalogo";
-import ModalDeleteValor from "../../etiquetasValores/components/ModalDeleteValor";
+import ModalDelete from "../../etiquetasValores/components/ModalDelete";
 import ModalSaveChanges from "../../etiquetasValores/components/ModalSaveChanges";
-import ModalUpdateCatalogo from "../../etiquetasValores/components/ModalUpdateCatalogo";
-import ModalUpdateValor from "../../etiquetasValores/components/ModalUpdateValor";
+import ModalUpdate from "../../etiquetasValores/components/ModalUpdate";
 import { fetchLabels, TableParentRow, TableSubRow } from "../../etiquetasValores/services/labelService";
 import { setLabels, getLabels, subscribe, addOperation } from "../../etiquetasValores/store/labelStore";
 import NestedTable from "../components/NestedTable";
@@ -124,28 +122,22 @@ export default function NestedTableTest() {
         <ModalNewValor compact={isSmall} />
 
         {/* Botones de Eliminar habilitados si hay al menos una selección */}
-        <ModalDeleteCatalogo
-          label={selectedLabels.length > 0 ? selectedLabels[0] : null}
+      <ModalDelete
           compact={isSmall}
-          onDeleteConfirm={handleDeleteConfirmLabel}
-        />
-        <ModalDeleteValor
-          compact={isSmall}
-          valor={selectedValores.length > 0 ? selectedValores[0] : null}
-          parentLabel={selectedValorParent}
-          onDeleteConfirm={handleDeleteConfirmValor}
-        />
+          selectedLabels={selectedLabels}
+          selectedValores={selectedValores}
+          selectedValorParent={selectedValorParent}
+          onDeleteConfirmCatalogo={handleDeleteConfirmLabel}
+          onDeleteConfirmValor={handleDeleteConfirmValor}
+      />
 
         {/* Botones de Actualizar habilitados SOLO si hay EXACTAMENTE una selección */}
-        <ModalUpdateCatalogo
-          label={selectedLabels.length === 1 ? selectedLabels[0] : null}
+      <ModalUpdate
           compact={isSmall}
-        />
-        <ModalUpdateValor
-          compact={isSmall}
-          valorToEdit={selectedValores.length === 1 ? selectedValores[0] : null}
-          parentLabel={selectedValorParent}
-        />
+          selectedLabels={selectedLabels}
+          selectedValores={selectedValores}
+          selectedValorParent={selectedValorParent}
+      />
         <ToolbarSpacer />
         <ModalSaveChanges onSave={handleSave} compact={isSmall} />
       </Toolbar>

@@ -320,19 +320,45 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
     onSelectionChangeRef.current?.([]);
   };
 
-  const handleParentSelect = (selectedParents: TableParentRow[]) => {
-    const selectedIds = new Set(selectedParents.map(p => p.idetiqueta));
-    const updatedData = data.map(row => {
-      const isSelected = selectedIds.has(row.idetiqueta);
-      const newSubRows = row.subRows.map(sub => ({ ...sub, isSelected: false }));
-      return { ...row, isSelected, subRows: newSubRows };
-    });
-    setLabels(updatedData);
-    onSelectionChange?.(selectedParents);
-    if (selectedParents.length > 0) {
-      onValorSelectionChange?.([], null);
-    }
-  };
+
+const handleParentSelect = (selectedParents: TableParentRow[]) => {
+
+  // 1. Saber si existe un subRow seleccionado
+  const hasChildSelection = dataRef.current.some(p =>
+    p.subRows.some(s => s.isSelected)
+  );
+
+  // 2. Si hay valores seleccionados → ignorar selección de padres
+  if (hasChildSelection) {
+
+    // limpiar selección de padres en store
+    const clearedData = data.map(row => ({
+      ...row,
+      isSelected: false
+    }));
+
+    setLabels(clearedData);
+
+    // reportar selección limpia
+    onSelectionChange?.([]);
+
+    // no hacer nada más
+    return;
+  }
+
+  // 3. Si no hay valores seleccionados → selección normal
+  const selectedIds = new Set(selectedParents.map(p => p.idetiqueta));
+  const updatedData = data.map(row => ({
+    ...row,
+    isSelected: selectedIds.has(row.idetiqueta),
+    subRows: row.subRows.map(s => ({ ...s, isSelected: false }))
+  }));
+
+  setLabels(updatedData);
+
+  onSelectionChange?.(selectedParents);
+  onValorSelectionChange?.([], null);
+};
 
   const renderRowSubComponent = useMemo(
     () =>
