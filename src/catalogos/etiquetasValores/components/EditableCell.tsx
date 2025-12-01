@@ -361,25 +361,30 @@ interface CatalogViewCellProps {
 
 export const CatalogViewCell = ({ value, catalogTag }: CatalogViewCellProps) => {
   const labelText = React.useMemo(() => {
-  if (!value) return "";
-      
-  const allLabels = getLabels();
-  const parentCatalog = allLabels.find(l => l.idetiqueta === catalogTag);
-      
-  if (parentCatalog && parentCatalog.subRows) {
-    const match = parentCatalog.subRows.find(row => {
-      if (row.idvalor === String(value)) return true;
-          
-      if (value !== "" && row.idvalor !== "" && !isNaN(Number(row.idvalor)) && !isNaN(Number(value))) {
-        return Number(row.idvalor) === Number(value);
-      }
-          
-      return false;
-    });
-      
-    return match ? match.valor : value; 
-  }
-  return value;
+    if (String(value) === "0") {
+      if (catalogTag === "SOCIEDAD") return "Todas las Sociedades";
+      if (catalogTag === "CEDI") return "Todos los CEDIs";
+    } 
+    
+    if (!value) return "";
+        
+    const allLabels = getLabels();
+    const parentCatalog = allLabels.find(l => l.idetiqueta === catalogTag);
+        
+    if (parentCatalog && parentCatalog.subRows) {
+      const match = parentCatalog.subRows.find(row => {
+        if (row.idvalor === String(value)) return true;
+            
+        if (value !== "" && row.idvalor !== "" && !isNaN(Number(row.idvalor)) && !isNaN(Number(value))) {
+          return Number(row.idvalor) === Number(value);
+        }
+            
+        return false;
+      });
+        
+      return match ? match.valor : value; 
+    }
+    return value;
   }, [value, catalogTag]);
 
   return (
@@ -494,7 +499,8 @@ export const EditableCell = ({
       value,
       onSave: handleSave,
       onCancel: handleCancel,
-      onTab: (e: any, val: any) => handleTab(e, val) 
+      onTab: (e: any, val: any) => handleTab(e, val) ,
+      rowOriginal: rowData
     };
 
     switch (editorType) {

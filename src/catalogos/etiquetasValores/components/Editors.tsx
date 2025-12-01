@@ -112,7 +112,7 @@ interface CatalogEditorProps extends EditorProps {
   catalogTag: "SOCIEDAD" | "CEDI";
 }
 
-export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: CatalogEditorProps) => {
+export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag, rowOriginal }: CatalogEditorProps) => {
   const [options, setOptions] = useState<TableSubRow[]>([]);
   const [inputValue, setInputValue] = useState("");
   const isSelectingRef = React.useRef(false);
@@ -120,10 +120,30 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
 
   useEffect(() => {
     const allLabels = getLabels();
-    const parentCatalog = allLabels.find(l => l.idetiqueta === catalogTag);
-    if (parentCatalog && parentCatalog.subRows) {
-      setOptions(parentCatalog.subRows);
+    const tagToSearch = catalogTag === "SOCIEDAD" ? "SOCIEDAD" : "CEDI"; 
+    let catalogSource = allLabels.find(l => l.idetiqueta === tagToSearch);
+    
+    if (!catalogSource) {
+      catalogSource = allLabels.find(l => l.etiqueta === (catalogTag === "SOCIEDAD" ? "SOCIEDAD" : "Catálogo de Centros de Distribución"));
     }
+
+    let rawOptions = catalogSource && catalogSource.subRows ? [...catalogSource.subRows] : [];
+
+    if (catalogTag === "CEDI" && rowOriginal) {
+      const currentSociedadId = Number(rowOriginal.idsociedad);
+      if (currentSociedadId && currentSociedadId !== 0) {
+        rawOptions = rawOptions.filter(opt => Number(opt.idvalorpa) === currentSociedadId);
+      }
+    }
+
+    const defaultLabel = catalogTag === "SOCIEDAD" ? "Todas las Sociedades" : "Todos los CEDIs";
+    const optionZero: any = {
+      idvalor: "0",
+      valor: defaultLabel,
+      idsociedad: "0", idcedi: "0", idetiqueta: "", idvalorpa: null, alias: "", secuencia: 0, imagen: null, ruta: null, descripcion: "", indice: "", coleccion: "", seccion: ""
+    };
+
+    setOptions([optionZero, ...rawOptions]);
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
@@ -137,7 +157,13 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
     if (foundOption) {
       setInputValue(foundOption.valor);
     } else {
-      setInputValue(value || "");
+      if (catalogTag === "SOCIEDAD" && (value === "0" || value === 0)) {
+        setInputValue("Todas las Sociedades");
+      } else if (catalogTag === "CEDI" && (value === "0" || value === 0)) {
+        setInputValue("Todos los CEDIs");
+      } else {
+        setInputValue(value || "");
+      }
     }
   }, [value, options]);
 
