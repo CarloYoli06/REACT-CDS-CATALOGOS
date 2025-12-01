@@ -1,7 +1,8 @@
-// ModalNewCatalogo.tsx
-import { Button, Dialog, FlexBox, FlexBoxJustifyContent, Form, FormGroup, FormItem, Input, Label, StepInput, MultiInput, Token } from '@ui5/webcomponents-react';
-import { useState, useRef } from 'react';
-import { addOperation } from '../store/labelStore';
+import { Button, Dialog, FlexBox, FlexBoxJustifyContent, Form, FormGroup, FormItem, Input, Label, StepInput, MultiInput, Token, ComboBox, ComboBoxItem } from '@ui5/webcomponents-react';
+import { useState, useRef, useEffect } from 'react';
+import { addOperation, getLabels } from '../store/labelStore';
+import ValidationErrorDialog from './ValidationErrorDialog';
+import { TableSubRow } from '../services/labelService';
 
 const initialFormState = {
   IDETIQUETA: '',
@@ -25,10 +26,35 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
   const [formData, setFormData] = useState(initialFormState);
   const [errors, setErrors] = useState<any>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
   const latestFormRef = useRef(initialFormState);
 
   const [inputValue, setInputValue] = useState('');
   const [indiceTokens, setIndiceTokens] = useState<string[]>([]);
+
+  const [sociedadOptions, setSociedadOptions] = useState<TableSubRow[]>([]);
+  const [cediOptions, setCediOptions] = useState<TableSubRow[]>([]);
+  const [comboInputs, setComboInputs] = useState({ IDSOCIEDAD: '', IDCEDI: '' });
+
+  useEffect(() => {
+    if (isModalOpen) {
+      const labels = getLabels();
+      const sociedadLabel = labels.find(l => l.etiqueta === 'SOCIEDAD');
+      const cediLabel = labels.find(l => l.etiqueta === 'Catálogo de Centros de Distribución');
+
+      if (sociedadLabel && sociedadLabel.subRows) {
+        setSociedadOptions(sociedadLabel.subRows);
+      } else {
+        setSociedadOptions([]);
+      }
+
+      if (cediLabel && cediLabel.subRows) {
+        setCediOptions(cediLabel.subRows);
+      } else {
+        setCediOptions([]);
+      }
+    }
+  }, [isModalOpen]);
 
   const openModal = () => {
     setFormData(initialFormState);
@@ -36,6 +62,7 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
     setErrors({});
     setIndiceTokens([]);
     setInputValue('');
+    setComboInputs({ IDSOCIEDAD: '', IDCEDI: '' });
     setIsModalOpen(true);
   };
 
@@ -54,43 +81,46 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
       newErrors.IDETIQUETA = 'Debe ser texto.';
     }
 
+    // Validation for Society and CEDI
+    if (!data.IDSOCIEDAD || data.IDSOCIEDAD === 0) {
+      newErrors.IDSOCIEDAD = 'Debe seleccionar una SOCIEDAD válida.';
+    }
+    if (!data.IDCEDI || data.IDCEDI === 0) {
+      newErrors.IDCEDI = 'Debe seleccionar un CEDI válido.';
+    }
+
     if (!data.ETIQUETA) {
       newErrors.ETIQUETA = 'ETIQUETA es requerido.';
     } else if (typeof data.ETIQUETA !== 'string') {
       newErrors.ETIQUETA = 'Debe ser texto.';
     }
-
     if (!data.INDICE) {
       newErrors.INDICE = 'INDICE es requerido.';
     } else if (typeof data.INDICE !== 'string') {
       newErrors.INDICE = 'Debe ser texto.';
     }
-
     if (!data.COLECCION) {
       newErrors.COLECCION = 'COLECCION es requerido.';
     } else if (typeof data.COLECCION !== 'string') {
       newErrors.COLECCION = 'Debe ser texto.';
     }
-
     if (!data.SECCION) {
       newErrors.SECCION = 'SECCION es requerido.';
     } else if (typeof data.SECCION !== 'string') {
       newErrors.SECCION = 'Debe ser texto.';
     }
-
     if (typeof data.IMAGEN !== 'string') {
       newErrors.IMAGEN = 'Debe ser texto (opcional).';
     }
-
     if (typeof data.ROUTE !== 'string') {
       newErrors.ROUTE = 'Debe ser texto (opcional).';
     }
-
     if (typeof data.DESCRIPCION !== 'string') {
       newErrors.DESCRIPCION = 'Debe ser texto (opcional).';
     }
 
     // --- Campos Numéricos (Numbers) ---
+
     if (typeof data.SECUENCIA !== 'number') {
       newErrors.SECUENCIA = 'Debe ser un número (opcional).';
     }
@@ -132,15 +162,60 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
     });
   };
 
-  const handleSubmit = () => {
-    const snapshot = { ...(latestFormRef.current || formData) };
-    
-    // Solo validación frontend básica (campos requeridos)
-    if (!validate(snapshot)) {
-      return; // Mostrar errores en el formulario
+  const handleComboBoxChange = (e: any, fieldName: 'IDSOCIEDAD' | 'IDCEDI') => {
+    const selectedItem = e.detail.item;
+    const inputValue = e.target.value; // Text currently in the input
+
+    let newId = 0;
+    let newText = inputValue;
+
+    const options = fieldName === 'IDSOCIEDAD' ? sociedadOptions : cediOptions;
+
+    if (selectedItem) {
+      newText = selectedItem.text;
+      const option = options.find(o => o.valor === newText);
+      if (option) {
+        newId = Number(option.idvalor) || Number(option.valor) || 0;
+      }
+    } else {
+      // User typed something. Try to match it to an option by text
+      const option = options.find(o => o.valor === inputValue);
+      if (option) {
+        newId = Number(option.idvalor) || Number(option.valor) || 0;
+      }
     }
 
-    // Agregar operación a la cola (NO ejecutar todavía)
+    // Update display text
+    setComboInputs(prev => ({
+      ...prev,
+      [fieldName]: newText
+    }));
+
+    // Update stored ID
+    setFormData(prevState => {
+      const updatedState = {
+        ...prevState,
+        [fieldName]: newId
+      };
+
+      // If society changes, clear CEDI selection if it doesn't match anymore (optional, but good practice)
+      // For now, let's just update the state. The filtering in render will hide invalid options.
+
+      latestFormRef.current = updatedState;
+      return updatedState;
+    });
+  };
+
+  const handleSubmit = () => {
+    const snapshot = { ...(latestFormRef.current || formData) };
+
+    // Solo validación frontend
+    if (!validate(snapshot)) {
+      setShowErrorDialog(true);
+      return;
+    }
+
+    // Agregar a la cola (sin try/catch)
     addOperation({
       collection: 'labels',
       action: 'CREATE',
@@ -150,195 +225,222 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
       }
     });
 
-    // Cerrar modal
-    closeModal();
+    closeModal(); // Cierra inmediatamente
   };
 
-  return (
-    <>
-      <Button 
-        design="Positive" 
-        icon="add" 
-        onClick={openModal} 
-        accessibleName="Crear Nuevo Catalogo"
-      >
-        {!compact && 'Crear Nuevo Catalogo'}
-      </Button>
+  return <>
+    <Button design="Positive" icon="add" onClick={openModal} accessibleName="Crear Nuevo Catalogo">
+      {!compact && 'Crear Nuevo Catalogo'}
+    </Button>
+    <ValidationErrorDialog
+      open={showErrorDialog}
+      errors={errors}
+      onClose={() => setShowErrorDialog(false)}
+      title="Errores al Crear Catálogo"
+    />
+    <Dialog
+      open={isModalOpen}
+      onClose={closeModal}
+      headerText='Agrega un Catalogo'
+      footer={
+        <FlexBox justifyContent={FlexBoxJustifyContent.End} fitContainer style={{ paddingBlock: '0.25rem' }}>
+          <Button onClick={handleSubmit}>Crear</Button>
+          <Button onClick={closeModal}>Cerrar</Button>{' '}
+        </FlexBox>
+      }
+    >
+      <Form>
+        <FormGroup headerText='Informacion del Catalogo'>
 
-      <Dialog
-        open={isModalOpen}
-        onClose={closeModal}
-        headerText='Agrega un Catalogo'
-        footer={
-          <FlexBox justifyContent={FlexBoxJustifyContent.End} fitContainer style={{ paddingBlock: '0.25rem' }}>
-            <Button onClick={handleSubmit}>Crear</Button>
-            <Button onClick={closeModal}>Cerrar</Button>
-          </FlexBox>
-        }
-      >
-        <Form>
-          <FormGroup headerText='Informacion del Catalogo'>
-            <FormItem labelContent={<Label required>ID de la etiqueta</Label>}>
-              <Input
-                name="IDETIQUETA"
-                value={formData.IDETIQUETA}
-                onInput={handleChange}
-                placeholder="Escribe el ID único (Ej: LBL-001)"
-                valueState={errors.IDETIQUETA ? "Negative" : "None"}
-                valueStateMessage={<div slot="valueStateMessage">{errors.IDETIQUETA}</div>}
-              />
-            </FormItem>
+          <FormItem labelContent={<Label required>ID de la etiqueta</Label>}>
+            <Input
+              name="IDETIQUETA"
+              value={formData.IDETIQUETA}
+              onInput={handleChange}
+              placeholder="Escribe el ID único (Ej: LBL-001)"
+              valueState={errors.IDETIQUETA ? "Negative" : "None"}
+              valueStateMessage={<div slot="valueStateMessage">{errors.IDETIQUETA}</div>}
+            />
+          </FormItem>
 
-            <FormItem labelContent={<Label required>IDSOCIEDAD</Label>}>
-              <StepInput
-                name="IDSOCIEDAD"
-                value={formData.IDSOCIEDAD}
-                onInput={handleChange}
-                valueState={errors.IDSOCIEDAD ? "Negative" : "None"}
-                valueStateMessage={<div slot="valueStateMessage">{errors.IDSOCIEDAD}</div>}
-              />
-            </FormItem>
+          <FormItem labelContent={<Label required>IDSOCIEDAD</Label>}>
+            <ComboBox
+              name="IDSOCIEDAD"
+              value={comboInputs.IDSOCIEDAD}
+              onSelectionChange={(e) => handleComboBoxChange(e, 'IDSOCIEDAD')}
+              onInput={(e) => handleComboBoxChange(e, 'IDSOCIEDAD')}
+              placeholder="Seleccione Sociedad"
+              valueState={errors.IDSOCIEDAD ? "Negative" : "None"}
+              valueStateMessage={<div slot="valueStateMessage">{errors.IDSOCIEDAD}</div>}
+            >
+              {sociedadOptions.map((option) => (
+                <ComboBoxItem key={option.idvalor} text={option.valor} />
+              ))}
+            </ComboBox>
+          </FormItem>
 
-            <FormItem labelContent={<Label required>IDCEDI</Label>}>
-              <StepInput
-                name="IDCEDI"
-                value={formData.IDCEDI}
-                onInput={handleChange}
-                valueState={errors.IDCEDI ? "Negative" : "None"}
-                valueStateMessage={<div slot="valueStateMessage">{errors.IDCEDI}</div>}
-              />
-            </FormItem>
-
-            <FormItem labelContent={<Label required>ETIQUETA</Label>}>
-              <Input
-                name="ETIQUETA"
-                value={formData.ETIQUETA}
-                onInput={handleChange}
-                placeholder="Nombre visible (Ej: Menú Principal)"
-                valueState={errors.ETIQUETA ? "Negative" : "None"}
-                valueStateMessage={<div slot="valueStateMessage">{errors.ETIQUETA}</div>}
-              />
-            </FormItem>
-
-            <FormItem labelContent={<Label required>INDICE</Label>}>
-              <MultiInput
-                name="INDICE"
-                value={inputValue}
-                placeholder="Escriba y presione Enter o pegue valores separados por comas"
-                valueState={errors.INDICE ? "Negative" : "None"}
-                valueStateMessage={<div slot="valueStateMessage">{errors.INDICE}</div>}
-                tokens={indiceTokens.map((tokenText, index) => (
-                  <Token key={index} text={tokenText} />
+          <FormItem labelContent={<Label required>IDCEDI</Label>}>
+            <ComboBox
+              name="IDCEDI"
+              value={comboInputs.IDCEDI}
+              onSelectionChange={(e) => handleComboBoxChange(e, 'IDCEDI')}
+              onInput={(e) => handleComboBoxChange(e, 'IDCEDI')}
+              placeholder="Seleccione CEDI"
+              valueState={errors.IDCEDI ? "Negative" : "None"}
+              valueStateMessage={<div slot="valueStateMessage">{errors.IDCEDI}</div>}
+              disabled={!formData.IDSOCIEDAD} // Disable if no society selected
+            >
+              {cediOptions
+                .filter(option => Number(option.idvalorpa) === formData.IDSOCIEDAD) // Filter by parent ID
+                .map((option) => (
+                  <ComboBoxItem key={option.idvalor} text={option.valor} />
                 ))}
-                onInput={(e) => setInputValue(e.target.value)}
-                onTokenDelete={(e) => {
-                  if (!e.detail.tokens || e.detail.tokens.length === 0) return;
-                  const deletedText = e.detail.tokens[0].text;
-                  const newTokens = indiceTokens.filter((t) => t !== deletedText);
-                  setIndiceTokens(newTokens);
-                  const newIndiceString = newTokens.join(',');
-                  const fakeEvent = { currentTarget: { getAttribute: () => 'INDICE' }, detail: { value: newIndiceString } };
-                  handleChange(fakeEvent);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && inputValue.trim() !== '') {
-                    e.preventDefault();
-                    const newText = inputValue.trim();
-                    if (!indiceTokens.includes(newText)) {
-                      const newTokens = [...indiceTokens, newText];
-                      setIndiceTokens(newTokens);
-                      const newIndiceString = newTokens.join(',');
-                      const fakeEvent = { currentTarget: { getAttribute: () => 'INDICE' }, detail: { value: newIndiceString } };
-                      handleChange(fakeEvent);
-                    }
-                    setInputValue('');
-                  }
-                }}
-                onBlur={() => {
+            </ComboBox>
+          </FormItem>
+
+          <FormItem labelContent={<Label required>ETIQUETA</Label>}>
+            <Input
+              name="ETIQUETA"
+              value={formData.ETIQUETA}
+              onInput={handleChange}
+              placeholder="Nombre visible (Ej: Menú Principal)"
+              valueState={errors.ETIQUETA ? "Negative" : "None"}
+              valueStateMessage={<div slot="valueStateMessage">{errors.ETIQUETA}</div>}
+            />
+          </FormItem>
+          <FormItem labelContent={<Label required>INDICE</Label>}>
+            <MultiInput
+              name="INDICE" // El 'name' es usado por la validación
+              value={inputValue}
+              placeholder="Escriba y presione Enter o pegue valores separados por comas"
+              valueState={errors.INDICE ? "Negative" : "None"}
+              valueStateMessage={<div slot="valueStateMessage">{errors.INDICE}</div>}
+
+              tokens={indiceTokens.map((tokenText, index) => (
+                <Token key={index} text={tokenText} />
+              ))}
+
+              onInput={(e) => setInputValue(e.target.value)}
+
+              // Lógica para eliminar un token
+              onTokenDelete={(e) => {
+                // Comprobar que el array 'tokens' existe y tiene elementos
+                if (!e.detail.tokens || e.detail.tokens.length === 0) return;
+
+                // Obtener el texto del token eliminado
+                const deletedText = e.detail.tokens[0].text;
+
+                const newTokens = indiceTokens.filter((t) => t !== deletedText);
+                setIndiceTokens(newTokens);
+
+                // Actualizar el valor de INDICE en el formData
+                const newIndiceString = newTokens.join(',');
+
+                // Crear un evento falso para reutilizar handleChange
+                const fakeEvent = { currentTarget: { getAttribute: () => 'INDICE' }, detail: { value: newIndiceString } };
+                handleChange(fakeEvent);
+              }}
+
+              // Lógica para añadir tokens al presionar Enter
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && inputValue.trim() !== '') {
+                  e.preventDefault();
                   const newText = inputValue.trim();
-                  if (newText !== '') {
-                    if (!indiceTokens.includes(newText)) {
-                      const newTokens = [...indiceTokens, newText];
-                      setIndiceTokens(newTokens);
-                      const newIndiceString = newTokens.join(',');
-                      const fakeEvent = { currentTarget: { getAttribute: () => 'INDICE' }, detail: { value: newIndiceString } };
-                      handleChange(fakeEvent);
-                    }
-                    setInputValue('');
+                  if (!indiceTokens.includes(newText)) {
+                    const newTokens = [...indiceTokens, newText];
+                    setIndiceTokens(newTokens);
+
+                    const newIndiceString = newTokens.join(',');
+                    const fakeEvent = { currentTarget: { getAttribute: () => 'INDICE' }, detail: { value: newIndiceString } };
+                    handleChange(fakeEvent);
                   }
-                }}
-              />
-            </FormItem>
+                  setInputValue('');
+                }
+              }}
 
-            <FormItem labelContent={<Label required>COLECCION</Label>}>
-              <Input
-                name="COLECCION"
-                value={formData.COLECCION}
-                onInput={handleChange}
-                placeholder="Nombre de la colección (Ej: Catálogos)"
-                valueState={errors.COLECCION ? "Negative" : "None"}
-                valueStateMessage={<div slot="valueStateMessage">{errors.COLECCION}</div>}
-              />
-            </FormItem>
+              // Lógica para añadir tokens al quitar el foco
+              onBlur={() => {
+                const newText = inputValue.trim();
+                if (newText !== '') { // Si queda texto en el input
+                  if (!indiceTokens.includes(newText)) { // Y no es un duplicado
+                    const newTokens = [...indiceTokens, newText];
+                    setIndiceTokens(newTokens);
 
-            <FormItem labelContent={<Label required>SECCION</Label>}>
-              <Input
-                name="SECCION"
-                value={formData.SECCION}
-                onInput={handleChange}
-                placeholder="Nombre de la sección (Ej: Home)"
-                valueState={errors.SECCION ? "Negative" : "None"}
-                valueStateMessage={<div slot="valueStateMessage">{errors.SECCION}</div>}
-              />
-            </FormItem>
+                    // Actualizamos el string principal
+                    const newIndiceString = newTokens.join(',');
+                    const fakeEvent = { currentTarget: { getAttribute: () => 'INDICE' }, detail: { value: newIndiceString } };
+                    handleChange(fakeEvent);
+                  }
+                  setInputValue(''); // Limpiamos el input
+                }
+              }}
+            />
+          </FormItem>
+          <FormItem labelContent={<Label required>COLECCION</Label>}>
+            <Input
+              name="COLECCION"
+              value={formData.COLECCION}
+              onInput={handleChange}
+              placeholder="Nombre de la colección (Ej: Catálogos)"
+              valueState={errors.COLECCION ? "Negative" : "None"}
+              valueStateMessage={<div slot="valueStateMessage">{errors.COLECCION}</div>}
+            />
+          </FormItem>
+          <FormItem labelContent={<Label required>SECCION</Label>}>
+            <Input
+              name="SECCION"
+              value={formData.SECCION}
+              onInput={handleChange}
+              placeholder="Nombre de la sección (Ej: Home)"
+              valueState={errors.SECCION ? "Negative" : "None"}
+              valueStateMessage={<div slot="valueStateMessage">{errors.SECCION}</div>}
+            />
+          </FormItem>
 
-            <FormItem labelContent={<Label>SECUENCIA</Label>}>
-              <StepInput
-                name="SECUENCIA"
-                value={formData.SECUENCIA}
-                onInput={handleChange}
-                valueState={errors.SECUENCIA ? "Negative" : "None"}
-                valueStateMessage={<div slot="valueStateMessage">{errors.SECUENCIA}</div>}
-              />
-            </FormItem>
+          <FormItem labelContent={<Label>SECUENCIA</Label>}>
+            <StepInput
+              name="SECUENCIA"
+              value={formData.SECUENCIA}
+              onInput={handleChange}
+              valueState={errors.SECUENCIA ? "Negative" : "None"}
+              valueStateMessage={<div slot="valueStateMessage">{errors.SECUENCIA}</div>}
+            />
+          </FormItem>
 
-            <FormItem labelContent={<Label>Imagen</Label>}>
-              <Input
-                name="IMAGEN"
-                value={formData.IMAGEN}
-                onInput={handleChange}
-                placeholder="Ej: /assets/imagenes/logo.png"
-                valueState={errors.IMAGEN ? "Negative" : "None"}
-                valueStateMessage={<div slot="valueStateMessage">{errors.IMAGEN}</div>}
-              />
-            </FormItem>
-
-            <FormItem labelContent={<Label>Ruta</Label>}>
-              <Input
-                name="ROUTE"
-                value={formData.ROUTE}
-                onInput={handleChange}
-                placeholder="Ruta de navegación (Ej: /home)"
-                valueState={errors.ROUTE ? "Negative" : "None"}
-                valueStateMessage={<div slot="valueStateMessage">{errors.ROUTE}</div>}
-              />
-            </FormItem>
-
-            <FormItem labelContent={<Label>Descripcion</Label>}>
-              <Input
-                name="DESCRIPCION"
-                value={formData.DESCRIPCION}
-                onInput={handleChange}
-                placeholder="Escribe una descripción breve"
-                valueState={errors.DESCRIPCION ? "Negative" : "None"}
-                valueStateMessage={<div slot="valueStateMessage">{errors.DESCRIPCION}</div>}
-              />
-            </FormItem>
-          </FormGroup>
-        </Form>
-      </Dialog>
-    </>
-  );
+          <FormItem labelContent={<Label>Imagen</Label>}>
+            <Input
+              name="IMAGEN"
+              value={formData.IMAGEN}
+              onInput={handleChange}
+              placeholder="Ej: /assets/imagenes/logo.png"
+              valueState={errors.IMAGEN ? "Negative" : "None"}
+              valueStateMessage={<div slot="valueStateMessage">{errors.IMAGEN}</div>}
+            />
+          </FormItem>
+          <FormItem labelContent={<Label>Ruta</Label>}>
+            <Input
+              name="ROUTE"
+              value={formData.ROUTE}
+              onInput={handleChange}
+              placeholder="Ruta de navegación (Ej: /home)"
+              valueState={errors.ROUTE ? "Negative" : "None"}
+              valueStateMessage={<div slot="valueStateMessage">{errors.ROUTE}</div>}
+            />
+          </FormItem>
+          <FormItem labelContent={<Label>Descripcion</Label>}>
+            <Input
+              name="DESCRIPCION"
+              value={formData.DESCRIPCION}
+              onInput={handleChange}
+              placeholder="Escribe una descripción breve"
+              valueState={errors.DESCRIPCION ? "Negative" : "None"}
+              valueStateMessage={<div slot="valueStateMessage">{errors.DESCRIPCION}</div>}
+            />
+          </FormItem>
+        </FormGroup>
+      </Form>
+    </Dialog>
+  </>
 }
 
 export default ModalNewCatalogo;

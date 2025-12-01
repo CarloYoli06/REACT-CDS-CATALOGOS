@@ -19,7 +19,7 @@ interface ValidationErrorDialogProps {
 }
 
 function ValidationErrorDialog({ open, errors, onClose, title = "Errores de Validación" }: ValidationErrorDialogProps) {
-    
+
     // Función para determinar si los errores vienen del backend
     const isBackendError = (errors: any): errors is BackendError[] => {
         return Array.isArray(errors) && errors.length > 0 && errors[0].hasOwnProperty('status');
@@ -33,7 +33,7 @@ function ValidationErrorDialog({ open, errors, onClose, title = "Errores de Vali
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {errorEntries.map(([field, message]) => (
-                    <MessageStrip 
+                    <MessageStrip
                         key={field}
                         design="Negative"
                         hideCloseButton
@@ -70,7 +70,7 @@ function ValidationErrorDialog({ open, errors, onClose, title = "Errores de Vali
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {errors.map((error, index) => (
-                    <MessageStrip 
+                    <MessageStrip
                         key={index}
                         design="Negative"
                         hideCloseButton
@@ -96,8 +96,8 @@ function ValidationErrorDialog({ open, errors, onClose, title = "Errores de Vali
     };
 
     // Determinar qué tipo de errores mostrar
-    const hasErrors = isBackendError(errors) 
-        ? errors.length > 0 
+    const hasErrors = isBackendError(errors)
+        ? errors.length > 0
         : Object.keys(errors).length > 0;
 
     return (

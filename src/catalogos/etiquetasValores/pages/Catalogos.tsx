@@ -48,6 +48,7 @@ export default function Catalogos() {
   // *** Estados para manejo de errores del backend ***
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errors, setErrors] = useState<any>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
 
   // cargar etiquetas
@@ -76,10 +77,10 @@ export default function Catalogos() {
 
   // *** AQUÍ SE HACE TODO EL GUARDADO ***
   const handleSave = async () => {
-    // setIsSaving(true); // Removed unused state
+    setIsSaving(true);
 
     const result = await saveChanges();
-    // setIsSaving(false); // Removed unused state
+    setIsSaving(false);
 
     if (!result.success) {
       setErrors(
@@ -142,34 +143,34 @@ export default function Catalogos() {
     setSelectedValorParent(null);
   };
 
-const filteredLabels = labels
-  .map(label => {
-    const term = searchTerm.toLowerCase();
+  const filteredLabels = labels
+    .map(label => {
+      const term = searchTerm.toLowerCase();
 
-    const parentMatch =
-      label.etiqueta?.toLowerCase().includes(term) ||
-      label.descripcion?.toLowerCase().includes(term) ||
-      label.coleccion?.toLowerCase().includes(term) ||
-      label.seccion?.toLowerCase().includes(term);
+      const parentMatch =
+        label.etiqueta?.toLowerCase().includes(term) ||
+        label.descripcion?.toLowerCase().includes(term) ||
+        label.coleccion?.toLowerCase().includes(term) ||
+        label.seccion?.toLowerCase().includes(term);
 
-    const childrenMatch = label.subRows?.some(v =>
+      const childrenMatch = label.subRows?.some(v =>
       (v.valor?.toLowerCase().includes(term) ||
-       v.descripcion?.toLowerCase().includes(term) ||
-       v.alias?.toLowerCase().includes(term))
-    );
+        v.descripcion?.toLowerCase().includes(term) ||
+        v.alias?.toLowerCase().includes(term))
+      );
 
-    // ⭐⭐ CLAVE: si coincide o padre o hijo, regresamos el padre **COMPLETO**
-    if (parentMatch || childrenMatch) {
-      return {
-        ...label,
-        // ⭐ NO filtramos los hijos, se regresan tal cual
-        subRows: label.subRows
-      };
-    }
+      // ⭐⭐ CLAVE: si coincide o padre o hijo, regresamos el padre **COMPLETO**
+      if (parentMatch || childrenMatch) {
+        return {
+          ...label,
+          // ⭐ NO filtramos los hijos, se regresan tal cual
+          subRows: label.subRows
+        };
+      }
 
-    return null;
-  })
-  .filter((row): row is TableParentRow => row !== null);
+      return null;
+    })
+    .filter((row): row is TableParentRow => row !== null);
 
   const preparedData = useMemo(() => {
     return filteredLabels.map(row => {
@@ -190,18 +191,18 @@ const filteredLabels = labels
         preSelectedParent={selectedLabels.length === 1 ? selectedLabels[0] : null}
       />
       <ModalDelete
-          compact={isSmall}
-          selectedLabels={selectedLabels}
-          selectedValores={selectedValores}
-          selectedValorParent={selectedValorParent}
-          onDeleteConfirmCatalogo={handleDeleteConfirmLabel}
-          onDeleteConfirmValor={handleDeleteConfirmValor}
+        compact={isSmall}
+        selectedLabels={selectedLabels}
+        selectedValores={selectedValores}
+        selectedValorParent={selectedValorParent}
+        onDeleteConfirmCatalogo={handleDeleteConfirmLabel}
+        onDeleteConfirmValor={handleDeleteConfirmValor}
       />
       <ModalUpdate
-          compact={isSmall}
-          selectedLabels={selectedLabels}
-          selectedValores={selectedValores}
-          selectedValorParent={selectedValorParent}
+        compact={isSmall}
+        selectedLabels={selectedLabels}
+        selectedValores={selectedValores}
+        selectedValorParent={selectedValorParent}
       />
     </>
   );
@@ -226,20 +227,20 @@ const filteredLabels = labels
               compact={isSmall}
               preSelectedParent={selectedLabels.length === 1 ? selectedLabels[0] : null}
             />
-          <ModalDelete
+            <ModalDelete
               compact={isSmall}
               selectedLabels={selectedLabels}
               selectedValores={selectedValores}
               selectedValorParent={selectedValorParent}
               onDeleteConfirmCatalogo={handleDeleteConfirmLabel}
               onDeleteConfirmValor={handleDeleteConfirmValor}
-          />
-          <ModalUpdate
+            />
+            <ModalUpdate
               compact={isSmall}
               selectedLabels={selectedLabels}
               selectedValores={selectedValores}
               selectedValorParent={selectedValorParent}
-          />
+            />
           </div>
         )}
 
@@ -248,6 +249,7 @@ const filteredLabels = labels
         <ModalSaveChanges
           compact={isSmall}
           onSave={handleSave}
+          busy={isSaving}
         />
       </Toolbar>
 

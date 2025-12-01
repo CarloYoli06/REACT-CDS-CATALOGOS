@@ -9,7 +9,9 @@ import {
     Label,
     Dialog,
     MultiInput,
-    Token
+    Token,
+    ComboBox,
+    ComboBoxItem
 } from '@ui5/webcomponents-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { addOperation, getLabels, subscribe } from '../store/labelStore';
@@ -60,6 +62,11 @@ function ModalUpdate({
     const [inputValue, setInputValue] = useState('');
     const [indiceTokens, setIndiceTokens] = useState<string[]>([]);
 
+    // Estados para ComboBox en Catálogo
+    const [sociedadOptions, setSociedadOptions] = useState<TableSubRow[]>([]);
+    const [cediOptions, setCediOptions] = useState<TableSubRow[]>([]);
+    const [comboInputs, setComboInputs] = useState({ idsociedad: '', idcedi: '' });
+
     // Estados para Valor
     const initialValorState = {
         IDVALOR: "",
@@ -76,16 +83,24 @@ function ModalUpdate({
     const [allLabels, setAllLabels] = useState<TableParentRow[]>([]);
     const [selectedIdValorPa, setSelectedIdValorPa] = useState<string | null>(null);
 
-    // Cargar etiquetas para ValueHelpSelector
+    // Cargar etiquetas para ValueHelpSelector y ComboBoxes
     useEffect(() => {
-        const labels = getLabels();
-        const parents = labels.filter((label) => label.parent);
-        setAllLabels(parents);
+        const loadData = () => {
+            const labels = getLabels();
+            const parents = labels.filter((label) => label.parent);
+            setAllLabels(parents);
+
+            const sociedadLabel = labels.find(l => l.etiqueta === 'SOCIEDAD');
+            const cediLabel = labels.find(l => l.etiqueta === 'Catálogo de Centros de Distribución');
+
+            setSociedadOptions(sociedadLabel?.subRows || []);
+            setCediOptions(cediLabel?.subRows || []);
+        };
+
+        loadData();
 
         const unsubscribe = subscribe(() => {
-            const updatedLabels = getLabels();
-            const updatedParents = updatedLabels.filter((label) => label.parent);
-            setAllLabels(updatedParents);
+            loadData();
         });
 
         return () => unsubscribe();
@@ -112,16 +127,6 @@ function ModalUpdate({
     const validateCatalogo = (data: Partial<TableParentRow>) => {
         const newErrors: any = {};
         if (!data.etiqueta) newErrors.etiqueta = 'ETIQUETA es requerido.';
-        if (!data.indice) newErrors.indice = 'INDICE es requerido.';
-        if (!data.coleccion) newErrors.coleccion = 'COLECCION es requerido.';
-        if (!data.seccion) newErrors.seccion = 'SECCION es requerido.';
-        if (!data.idetiqueta) newErrors.idetiqueta = 'ID ETIQUETA es requerido.';
-        if (data.idsociedad === undefined || data.idsociedad === null || data.idsociedad === '') newErrors.idsociedad = 'ID SOCIEDAD es requerido.';
-        if (data.idcedi === undefined || data.idcedi === null || data.idcedi === '') newErrors.idcedi = 'ID CEDI es requerido.';
-        if (data.secuencia !== undefined && data.secuencia !== null && isNaN(Number(data.secuencia))) newErrors.secuencia = 'SECUENCIA debe ser un número.';
-        if (data.idsociedad !== undefined && data.idsociedad !== null && data.idsociedad !== '' && isNaN(Number(data.idsociedad))) newErrors.idsociedad = 'ID SOCIEDAD debe ser un número.';
-        if (data.idcedi !== undefined && data.idcedi !== null && data.idcedi !== '' && isNaN(Number(data.idcedi))) newErrors.idcedi = 'ID CEDI debe ser un número.';
-        setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
@@ -151,6 +156,43 @@ function ModalUpdate({
                 ...prevState,
                 [name]: converted
             } as TableParentRow;
+            catalogoRef.current = updatedState;
+            return updatedState;
+        });
+    };
+
+    const handleComboBoxChange = (e: any, fieldName: 'idsociedad' | 'idcedi') => {
+        const selectedItem = e.detail.item;
+        const inputValue = e.target.value;
+
+        let newId = '0';
+        let newText = inputValue;
+
+        const options = fieldName === 'idsociedad' ? sociedadOptions : cediOptions;
+
+        if (selectedItem) {
+            newText = selectedItem.text;
+            const option = options.find(o => o.valor === newText);
+            if (option) {
+                newId = option.idvalor || option.valor || '0';
+            }
+        } else {
+            const option = options.find(o => o.valor === inputValue);
+            if (option) {
+                newId = option.idvalor || option.valor || '0';
+            }
+        }
+
+        setComboInputs(prev => ({
+            ...prev,
+            [fieldName]: newText
+        }));
+
+        setCatalogoData(prevState => {
+            const updatedState = {
+                ...prevState,
+                [fieldName]: newId
+            };
             catalogoRef.current = updatedState;
             return updatedState;
         });
@@ -228,6 +270,16 @@ function ModalUpdate({
             const tokens = label.indice ? label.indice.split(',').filter(t => t.trim() !== '') : [];
             setIndiceTokens(tokens.map(t => t.trim()));
             setInputValue('');
+
+            // Set initial combo inputs
+            const initialSociedadText = sociedadOptions.find(o => o.idvalor === label.idsociedad || o.valor === label.idsociedad)?.valor || label.idsociedad || '';
+            const initialCediText = cediOptions.find(o => o.idvalor === label.idcedi || o.valor === label.idcedi)?.valor || label.idcedi || '';
+
+            setComboInputs({
+                idsociedad: initialSociedadText,
+                idcedi: initialCediText
+            });
+
         } else if (hasOneValor && !hasOneCatalogo) {
             // Modo Valor
             const valor = selectedValores[0];
@@ -389,25 +441,38 @@ function ModalUpdate({
                             </FormItem>
 
                             <FormItem labelContent={<Label>IDSOCIEDAD</Label>}>
-                                <Input
-                                    type="Number"
+                                <ComboBox
                                     name="idsociedad"
-                                    value={catalogoData.idsociedad.toString() ?? ''}
-                                    onInput={handleCatalogoChange}
+                                    value={comboInputs.idsociedad}
+                                    onSelectionChange={(e) => handleComboBoxChange(e, 'idsociedad')}
+                                    onInput={(e) => handleComboBoxChange(e, 'idsociedad')}
+                                    placeholder="Seleccione Sociedad"
                                     valueState={errors.idsociedad ? "Negative" : "None"}
                                     valueStateMessage={<div slot="valueStateMessage">{errors.idsociedad}</div>}
-                                />
+                                >
+                                    {sociedadOptions.map((option) => (
+                                        <ComboBoxItem key={option.idvalor} text={option.valor} />
+                                    ))}
+                                </ComboBox>
                             </FormItem>
 
                             <FormItem labelContent={<Label>IDCEDI</Label>}>
-                                <Input
-                                    type="Number"
+                                <ComboBox
                                     name="idcedi"
-                                    value={catalogoData.idcedi.toString()}
-                                    onInput={handleCatalogoChange}
+                                    value={comboInputs.idcedi}
+                                    onSelectionChange={(e) => handleComboBoxChange(e, 'idcedi')}
+                                    onInput={(e) => handleComboBoxChange(e, 'idcedi')}
+                                    placeholder="Seleccione CEDI"
                                     valueState={errors.idcedi ? "Negative" : "None"}
                                     valueStateMessage={<div slot="valueStateMessage">{errors.idcedi}</div>}
-                                />
+                                    disabled={!catalogoData.idsociedad || catalogoData.idsociedad === '0'}
+                                >
+                                    {cediOptions
+                                        .filter(option => Number(option.idvalorpa) === Number(catalogoData.idsociedad))
+                                        .map((option) => (
+                                            <ComboBoxItem key={option.idvalor} text={option.valor} />
+                                        ))}
+                                </ComboBox>
                             </FormItem>
 
                             <FormItem labelContent={<Label required>ETIQUETA</Label>}>
