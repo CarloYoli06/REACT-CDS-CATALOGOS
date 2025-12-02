@@ -43,6 +43,7 @@ function ModalUpdate({
 
     // Estados para Catálogo
     const initialCatalogoState: TableParentRow = {
+        internalId: '',
         parent: true,
         idetiqueta: '',
         idsociedad: '0',
@@ -111,6 +112,7 @@ function ModalUpdate({
         const hasOneCatalogo = selectedLabels.length === 1;
         const hasOneValor = selectedValores.length === 1 && selectedValorParent !== null;
 
+
         if (hasOneCatalogo && !hasOneValor) {
             setIsButtonDisabled(false);
             setButtonText('Actualizar Catálogo');
@@ -127,6 +129,16 @@ function ModalUpdate({
     const validateCatalogo = (data: Partial<TableParentRow>) => {
         const newErrors: any = {};
         if (!data.etiqueta) newErrors.etiqueta = 'ETIQUETA es requerido.';
+
+        if (data.idetiqueta) {
+             const allLabels = getLabels();
+             const exists = allLabels.some(l => l.idetiqueta === data.idetiqueta && l.internalId !== data.internalId);
+             if (exists) {
+                 newErrors.idetiqueta = `El ID "${data.idetiqueta}" ya existe.`;
+             }
+        }
+        
+        setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
@@ -137,6 +149,26 @@ function ModalUpdate({
         if (data.SECUENCIA && isNaN(Number(data.SECUENCIA))) {
             newErrors.SECUENCIA = "El valor debe ser numérico.";
         }
+
+        if (data.IDVALOR) {
+            const allLabels = getLabels();
+            const currentInternalId = selectedValores[0]?.internalId;
+            
+            let exists = false;
+            for (const label of allLabels) {
+                if (label.subRows) {
+                    const match = label.subRows.find(v => v.idvalor === data.IDVALOR && v.internalId !== currentInternalId);
+                    if (match) {
+                        exists = true;
+                        break;
+                    }
+                }
+            }
+            if (exists) {
+                newErrors.IDVALOR = `El ID "${data.IDVALOR}" ya existe.`;
+            }
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -341,6 +373,7 @@ function ModalUpdate({
             const label = selectedLabels[0];
             const updatePayload = {
                 id: label.idetiqueta,
+                internalId: label.internalId,
                 updates: {
                     IDETIQUETA: snapshot.idetiqueta,
                     IDSOCIEDAD: Number(snapshot.idsociedad) || 0,
@@ -374,6 +407,7 @@ function ModalUpdate({
             const valorPaFinal = !snapshot.IDVALORPA ? null : snapshot.IDVALORPA;
             const updatePayload = {
                 id: snapshot.IDVALOR,
+                internalId: selectedValores[0]?.internalId,
                 IDETIQUETA: selectedValorParent.idetiqueta,
                 updates: {
                     VALOR: snapshot.VALOR,
@@ -615,7 +649,7 @@ function ModalUpdate({
 
                         <FormGroup headerText="Información del Valor">
                             <FormItem labelContent={<Label required>ID del Valor</Label>}>
-                                <Input name="IDVALOR" value={valorData.IDVALOR} disabled />
+                                <Input name="IDVALOR" value={valorData.IDVALOR}  />
                             </FormItem>
                             <FormItem labelContent={<Label required>Valor</Label>}>
                                 <Input

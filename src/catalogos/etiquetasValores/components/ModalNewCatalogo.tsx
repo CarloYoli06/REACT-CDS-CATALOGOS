@@ -58,6 +58,7 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
 
   const openModal = () => {
     setFormData(initialFormState);
+
     latestFormRef.current = initialFormState;
     setErrors({});
     setIndiceTokens([]);
@@ -68,67 +69,25 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setErrors({});
   };
 
   const validate = (data: typeof initialFormState) => {
     const newErrors: any = {};
-
-    // --- Campos de Texto (Strings) ---
     if (!data.IDETIQUETA) {
       newErrors.IDETIQUETA = 'IDETIQUETA es requerido.';
-    } else if (typeof data.IDETIQUETA !== 'string') {
-      newErrors.IDETIQUETA = 'Debe ser texto.';
+    } else {
+      const allLabels = getLabels();
+      const exists = allLabels.some(l => l.idetiqueta === data.IDETIQUETA);
+      if (exists) {
+        newErrors.IDETIQUETA = `El ID "${data.IDETIQUETA}" ya existe.`;
+      }
     }
-
-    // Validation for Society and CEDI
-    if (!data.IDSOCIEDAD || data.IDSOCIEDAD === 0) {
-      newErrors.IDSOCIEDAD = 'Debe seleccionar una SOCIEDAD válida.';
-    }
-    if (!data.IDCEDI || data.IDCEDI === 0) {
-      newErrors.IDCEDI = 'Debe seleccionar un CEDI válido.';
-    }
-
-    if (!data.ETIQUETA) {
-      newErrors.ETIQUETA = 'ETIQUETA es requerido.';
-    } else if (typeof data.ETIQUETA !== 'string') {
-      newErrors.ETIQUETA = 'Debe ser texto.';
-    }
-    if (!data.INDICE) {
-      newErrors.INDICE = 'INDICE es requerido.';
-    } else if (typeof data.INDICE !== 'string') {
-      newErrors.INDICE = 'Debe ser texto.';
-    }
-    if (!data.COLECCION) {
-      newErrors.COLECCION = 'COLECCION es requerido.';
-    } else if (typeof data.COLECCION !== 'string') {
-      newErrors.COLECCION = 'Debe ser texto.';
-    }
-    if (!data.SECCION) {
-      newErrors.SECCION = 'SECCION es requerido.';
-    } else if (typeof data.SECCION !== 'string') {
-      newErrors.SECCION = 'Debe ser texto.';
-    }
-    if (typeof data.IMAGEN !== 'string') {
-      newErrors.IMAGEN = 'Debe ser texto (opcional).';
-    }
-    if (typeof data.ROUTE !== 'string') {
-      newErrors.ROUTE = 'Debe ser texto (opcional).';
-    }
-    if (typeof data.DESCRIPCION !== 'string') {
-      newErrors.DESCRIPCION = 'Debe ser texto (opcional).';
-    }
-
-    // --- Campos Numéricos (Numbers) ---
-
-    if (typeof data.SECUENCIA !== 'number') {
-      newErrors.SECUENCIA = 'Debe ser un número (opcional).';
-    }
+    if (!data.ETIQUETA) newErrors.ETIQUETA = 'ETIQUETA es requerido.';
+    if (!data.COLECCION) newErrors.COLECCION = 'COLECCION es requerido.';
+    if (!data.SECCION) newErrors.SECCION = 'SECCION es requerido.';
 
     setErrors(newErrors);
-    const isValid = Object.keys(newErrors).length === 0;
-    console.log("Validation result:", isValid, "Errors:", newErrors);
-    return isValid;
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleChange = (e: any) => {

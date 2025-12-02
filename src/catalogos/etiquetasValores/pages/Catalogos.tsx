@@ -59,7 +59,47 @@ export default function Catalogos() {
   // suscribir al store
   useEffect(() => {
     setLocalLabels(getLabels());
-    const unsub = subscribe(() => setLocalLabels(getLabels()));
+    const unsub = subscribe(() => {
+      const currentLabels = getLabels();
+      setLocalLabels(currentLabels);
+
+      // Refresh selectedLabels
+      setSelectedLabels(prevSelected => {
+        if (prevSelected.length === 0) return [];
+        return prevSelected.map(prev => {
+          const found = currentLabels.find(l => l.internalId === prev.internalId);
+          return found || prev;
+        });
+      });
+
+      // Refresh selectedValores
+      setSelectedValores(prevSelected => {
+        if (prevSelected.length === 0) return [];
+        // Need to find the parent first to find the value
+        // Assuming selectedValores belong to selectedValorParent
+        // We need to refresh selectedValorParent first? 
+        // Actually, selectedValores are just subRows. We can search in all labels.
+        
+        // Optimization: if we have selectedValorParent, search there first.
+        return prevSelected.map(prev => {
+           let foundVal: TableSubRow | undefined;
+           for (const label of currentLabels) {
+               if (label.subRows) {
+                   foundVal = label.subRows.find(v => v.internalId === prev.internalId);
+                   if (foundVal) break;
+               }
+           }
+           return foundVal || prev;
+        });
+      });
+      
+      // Refresh selectedValorParent
+      setSelectedValorParent(prev => {
+          if (!prev) return null;
+          return currentLabels.find(l => l.internalId === prev.internalId) || prev;
+      });
+
+    });
     return () => unsub();
   }, []);
 
@@ -119,7 +159,7 @@ export default function Catalogos() {
       addOperation({
         collection: "labels",
         action: "DELETE",
-        payload: { id: label.idetiqueta }
+        payload: { id: label.idetiqueta, internalId: label.internalId }
       });
     });
     setSelectedLabels([]);
@@ -134,6 +174,7 @@ export default function Catalogos() {
         action: "DELETE",
         payload: {
           id: valor.idvalor,
+          internalId: valor.internalId,
           IDETIQUETA: selectedValorParent.idetiqueta
         }
       });

@@ -38,6 +38,7 @@ const generateId = () => Date.now().toString(36) + Math.random().toString(36).su
 const updateLocalState = (operation: Operation) => {
   if (operation.collection === 'labels' && operation.action === 'CREATE') {
     const newLabel: TableParentRow = {
+      internalId: generateId(),
       parent: true,
       idsociedad: operation.payload.IDSOCIEDAD.toString(),
       idcedi: operation.payload.IDCEDI.toString(),
@@ -57,9 +58,11 @@ const updateLocalState = (operation: Operation) => {
   } else if (operation.collection === 'labels' && operation.action === 'UPDATE') {
     const targetId = operation.payload.id;
     const updates = operation.payload.updates;
+    const internalId = operation.payload.internalId;
 
     labels = labels.map(label => {
-      if (label.idetiqueta === targetId) {
+      const isMatch = internalId ? label.internalId === internalId : label.idetiqueta === targetId;
+      if (isMatch) {
         // FIC: Preserve 'Positive' status if it was a new item, otherwise set to 'Warning'
         const newStatus = label.status === 'Positive' ? 'Positive' : 'Critical';
         console.log('newStatus', newStatus);
@@ -94,8 +97,10 @@ const updateLocalState = (operation: Operation) => {
 
   } else if (operation.collection === 'labels' && operation.action === 'DELETE') {
     const targetId = operation.payload.id;
+    const internalId = operation.payload.internalId;
     labels = labels.map(label => {
-      if (label.idetiqueta === targetId) {
+      const isMatch = internalId ? label.internalId === internalId : label.idetiqueta === targetId;
+      if (isMatch) {
         return {
           ...label,
           status: 'Negative',
@@ -109,6 +114,7 @@ const updateLocalState = (operation: Operation) => {
     labels = labels.map(label => {
       if (label.idetiqueta === parentId && label.parent) {
         const newSubRow = {
+          internalId: generateId(),
           parent: false,
           idsociedad: operation.payload.IDSOCIEDAD.toString(),
           idcedi: operation.payload.IDCEDI.toString(),
@@ -137,13 +143,15 @@ const updateLocalState = (operation: Operation) => {
     const valorId = operation.payload.id;
     const parentId = operation.payload.IDETIQUETA;
     const updates = operation.payload.updates;
+    const internalId = operation.payload.internalId;
 
     if (!parentId || !valorId) return;
 
     labels = labels.map(label => {
       if (label.idetiqueta === parentId && label.parent) {
         const updatedSubRows = label.subRows.map(subRow => {
-          if (subRow.idvalor === valorId) {
+          const isMatch = internalId ? subRow.internalId === internalId : subRow.idvalor === valorId;
+          if (isMatch) {
              // FIC: Preserve 'Positive' status if it was a new item
             const newStatus = subRow.status === 'Positive' ? 'Positive' : 'Critical';
             return {
@@ -170,10 +178,12 @@ const updateLocalState = (operation: Operation) => {
   } else if (operation.collection === 'values' && operation.action === 'DELETE') {
     const valorId = operation.payload.id;
     const parentId = operation.payload.IDETIQUETA;
+    const internalId = operation.payload.internalId;
     labels = labels.map(label => {
       if (label.idetiqueta === parentId && label.parent) {
         const updatedSubRows = label.subRows.map(subRow => {
-          if (subRow.idvalor === valorId) {
+          const isMatch = internalId ? subRow.internalId === internalId : subRow.idvalor === valorId;
+          if (isMatch) {
             return { ...subRow, status: 'Negative' };
           }
           return subRow;
@@ -217,9 +227,12 @@ const refreshStatuses = () => {
 
     if (!targetId) return;
 
+    const internalId = op.payload.internalId;
+
     if (collection === 'labels') {
         labels = labels.map(l => {
-            if (l.idetiqueta === targetId) {
+            const isMatch = internalId ? l.internalId === internalId : l.idetiqueta === targetId;
+            if (isMatch) {
                 let newStatus = l.status;
                 if (action === 'CREATE') newStatus = 'Positive';
                 else if (action === 'UPDATE') newStatus = l.status === 'Positive' ? 'Positive' : 'Critical';
@@ -233,7 +246,8 @@ const refreshStatuses = () => {
         labels = labels.map(l => {
             if (l.idetiqueta === parentId) {
                 const newSubRows = l.subRows.map(sub => {
-                    if (sub.idvalor === targetId) {
+                    const isMatch = internalId ? sub.internalId === internalId : sub.idvalor === targetId;
+                    if (isMatch) {
                         let newStatus = sub.status;
                         if (action === 'CREATE') newStatus = 'Positive';
                         else if (action === 'UPDATE') newStatus = sub.status === 'Positive' ? 'Positive' : 'Critical';
@@ -256,6 +270,7 @@ export const addOperation = (operation: Operation) => {
   let merged = false;
 
   const targetId = opWithId.payload.id || (opWithId.collection === 'labels' ? opWithId.payload.IDETIQUETA : opWithId.payload.IDVALOR);
+  const internalId = opWithId.payload.internalId;
   const collection = opWithId.collection;
 
   // 1. Handle DELETE
@@ -264,7 +279,7 @@ export const addOperation = (operation: Operation) => {
     const existingDeleteIndex = operations.findIndex(op =>
         op.action === 'DELETE' &&
         op.collection === collection &&
-        op.payload.id === targetId
+        (internalId ? op.payload.internalId === internalId : op.payload.id === targetId)
     );
 
     if (existingDeleteIndex !== -1) {
@@ -276,7 +291,7 @@ export const addOperation = (operation: Operation) => {
     const createOpIndex = operations.findIndex(op =>
       op.action === 'CREATE' &&
       op.collection === collection &&
-      (collection === 'labels' ? op.payload.IDETIQUETA : op.payload.IDVALOR) === targetId
+      (internalId ? op.payload.internalId === internalId : (collection === 'labels' ? op.payload.IDETIQUETA : op.payload.IDVALOR) === targetId)
     );
 
     if (createOpIndex !== -1) {
@@ -307,7 +322,7 @@ export const addOperation = (operation: Operation) => {
     const updateOpIndex = operations.findIndex(op =>
       op.action === 'UPDATE' &&
       op.collection === collection &&
-      op.payload.id === targetId
+      (internalId ? op.payload.internalId === internalId : op.payload.id === targetId)
     );
 
     if (updateOpIndex !== -1) {
@@ -338,7 +353,7 @@ export const addOperation = (operation: Operation) => {
     const deleteOpIndex = operations.findIndex(op =>
       op.action === 'DELETE' &&
       op.collection === collection &&
-      op.payload.id === targetId
+      (internalId ? op.payload.internalId === internalId : op.payload.id === targetId)
     );
 
     if (deleteOpIndex !== -1) {
@@ -354,7 +369,7 @@ export const addOperation = (operation: Operation) => {
     const existingUpdateOp = operations.find(op =>
       op.action === 'UPDATE' &&
       op.collection === collection &&
-      op.payload.id === targetId
+      (internalId ? op.payload.internalId === internalId : op.payload.id === targetId)
     );
 
     if (existingUpdateOp) {
@@ -368,7 +383,7 @@ export const addOperation = (operation: Operation) => {
       const existingCreateOp = operations.find(op =>
         op.action === 'CREATE' &&
         op.collection === collection &&
-        (collection === 'labels' ? op.payload.IDETIQUETA : op.payload.IDVALOR) === targetId
+        (internalId ? op.payload.internalId === internalId : (collection === 'labels' ? op.payload.IDETIQUETA : op.payload.IDVALOR) === targetId)
       );
 
       if (existingCreateOp) {
@@ -384,13 +399,14 @@ export const addOperation = (operation: Operation) => {
       if (opWithId.action === 'UPDATE' || opWithId.action === 'DELETE') {
           let original: any = null;
 
+          const internalId = opWithId.payload.internalId;
           if (collection === 'labels') {
-              original = labels.find(l => l.idetiqueta === targetId);
+              original = labels.find(l => internalId ? l.internalId === internalId : l.idetiqueta === targetId);
           } else {
               const parentId = opWithId.payload.IDETIQUETA;
               const parent = labels.find(l => l.idetiqueta === parentId);
               if (parent) {
-                  original = parent.subRows.find(v => v.idvalor === targetId);
+                  original = parent.subRows.find(v => internalId ? v.internalId === internalId : v.idvalor === targetId);
               }
           }
           if (original) {
@@ -435,12 +451,18 @@ export const removeOperation = (opId: string) => {
       const collection = op.collection;
 
       if (collection === 'labels') {
-          labels = labels.map(l => l.idetiqueta === original.idetiqueta ? original : l);
+          labels = labels.map(l => {
+              const isMatch = original.internalId ? l.internalId === original.internalId : l.idetiqueta === original.idetiqueta;
+              return isMatch ? original : l;
+          });
       } else {
           const parentId = op.payload.IDETIQUETA;
           labels = labels.map(l => {
               if (l.idetiqueta === parentId) {
-                  const newSubRows = l.subRows.map(v => v.idvalor === original.idvalor ? original : v);
+                  const newSubRows = l.subRows.map(v => {
+                      const isMatch = original.internalId ? v.internalId === original.internalId : v.idvalor === original.idvalor;
+                      return isMatch ? original : v;
+                  });
                   return { ...l, subRows: newSubRows };
               }
               return l;

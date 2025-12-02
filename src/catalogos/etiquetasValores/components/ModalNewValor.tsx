@@ -102,7 +102,25 @@ function ModalNewValor({compact = false, preSelectedParent }: ModalNewValorProps
 
     if (!parentId) newErrors.parent = "Debe seleccionar una Etiqueta padre.";
 
-    if (!data.IDVALOR) newErrors.IDVALOR = "IDVALOR es requerido.";
+    if (!data.IDVALOR) {
+      newErrors.IDVALOR = "IDVALOR es requerido.";
+    } else {
+      const allLabels = getLabels();
+      let exists = false;
+      for (const label of allLabels) {
+        if (label.subRows) {
+          const match = label.subRows.find(v => v.idvalor === data.IDVALOR);
+          if (match) {
+            exists = true;
+            break;
+          }
+        }
+      }
+      if (exists) {
+        newErrors.IDVALOR = `El ID "${data.IDVALOR}" ya existe.`;
+      }
+    }
+
     if (!data.VALOR) newErrors.VALOR = "VALOR es requerido.";
 
     setErrors(newErrors);

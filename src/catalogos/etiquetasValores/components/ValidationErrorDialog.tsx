@@ -77,16 +77,16 @@ function ValidationErrorDialog({ open, errors, onClose, title = "Errores de Vali
                     >
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>
-                                {getErrorIcon(error.error.code)} Operación: {error.operation} en {error.collection}
+                                {getErrorIcon(error.error?.code)} Operación: {error.operation} en {error.collection}
                             </div>
                             <div>
                                 <strong>ID:</strong> {error.id}
                             </div>
                             <div>
-                                <strong>Error:</strong> {error.error.message}
+                                <strong>Error:</strong> {error.error?.message}
                             </div>
                             <div style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.25rem' }}>
-                                Código: {error.error.code}
+                                Código: {error.error?.code}
                             </div>
                         </div>
                     </MessageStrip>

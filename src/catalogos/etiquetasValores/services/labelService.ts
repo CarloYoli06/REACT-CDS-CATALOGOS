@@ -55,6 +55,7 @@ export interface ApiLabel {
 
 // Interfaces para el formato de la tabla
 export interface TableSubRow {
+    internalId: string;
     idsociedad: string;
     idcedi: string;
     idetiqueta: string;
@@ -74,6 +75,7 @@ export interface TableSubRow {
 }
 
 export interface TableParentRow {
+    internalId: string;
     parent: true;
     idsociedad: string;
     idcedi: string;
@@ -92,9 +94,12 @@ export interface TableParentRow {
     subRows: TableSubRow[];
 }
 
+const generateInternalId = () => 'int_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+
 const transformData = (labels: ApiLabel[]): TableParentRow[] => {
     return labels.map((label) => {
         const subRows: TableSubRow[] = (label.valores || []).map((valor) => ({
+            internalId: generateInternalId(),
             idsociedad: valor.IDSOCIEDAD?.toString() || '',
             idcedi: valor.IDCEDI?.toString() || '',
             idetiqueta: valor.IDETIQUETA || '',
@@ -111,6 +116,7 @@ const transformData = (labels: ApiLabel[]): TableParentRow[] => {
             seccion: label.SECCION || '',
         }));
         return {
+            internalId: generateInternalId(),
             parent: true,
             idsociedad: label.IDSOCIEDAD?.toString() || '',
             idcedi: label.IDCEDI?.toString() || '',
@@ -173,6 +179,19 @@ export const saveChanges = async (): Promise<{ success: boolean; message?: strin
         const newOp = { ...op };
         delete newOp.id;
         delete newOp.originalValues;
+        
+        // Remove internalId from payload if present
+        if (newOp.payload) {
+             const cleanPayload = { ...newOp.payload };
+             delete cleanPayload.internalId;
+             if (cleanPayload.updates) {
+                 const cleanUpdates = { ...cleanPayload.updates };
+                 delete cleanUpdates.internalId;
+                 cleanPayload.updates = cleanUpdates;
+             }
+             newOp.payload = cleanPayload;
+        }
+
         return newOp;
     });
 

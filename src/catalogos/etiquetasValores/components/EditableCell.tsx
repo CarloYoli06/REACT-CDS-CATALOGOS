@@ -463,6 +463,7 @@ export const EditableCell = ({
       action: 'UPDATE',
       payload: {
         id: id,
+        internalId: rowData.internalId,
         IDETIQUETA: isParent ? undefined : parentId, 
         IDSOCIEDAD: Number(rowData.idsociedad),
         IDCEDI: Number(rowData.idcedi),
