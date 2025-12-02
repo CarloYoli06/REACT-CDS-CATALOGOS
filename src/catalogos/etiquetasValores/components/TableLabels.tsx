@@ -43,6 +43,8 @@ const parentColumns = [
 { 
     Header: "IDSOCIEDAD", 
     accessor: "idsociedad",
+    width: 200, 
+    minWidth: 150,
     Cell: (props: any) => (
         <EditableCell 
             {...props} 
@@ -55,6 +57,8 @@ const parentColumns = [
   { 
     Header: "IDCEDI", 
     accessor: "idcedi",
+    width: 200, 
+    minWidth: 150,
     Cell: (props: any) => (
         <EditableCell 
             {...props} 
@@ -127,6 +131,8 @@ const childColumns = [
   { 
     Header: "SOCIEDAD",
     accessor: "idsociedad", 
+    width: 200, 
+    minWidth: 150,
     Cell: (props: any) => (
         <EditableCell 
             {...props} 
@@ -139,6 +145,8 @@ const childColumns = [
   { 
     Header: "CEDI", 
     accessor: "idcedi", 
+    width: 200, 
+    minWidth: 150,
     Cell: (props: any) => (
         <EditableCell 
             {...props} 

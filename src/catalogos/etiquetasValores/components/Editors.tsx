@@ -3,14 +3,11 @@ import {
   Input,
   MultiInput,
   Token,
-  ComboBox,
-  ComboBoxItem,
 } from "@ui5/webcomponents-react";
 import '@ui5/webcomponents-icons/dist/value-help';
 import '@ui5/webcomponents-icons/dist/decline';
 import { getLabels } from "../store/labelStore";
-import { TableSubRow } from "../services/labelService";
-import ValueHelpSelector from "./ValueHelpSelector"; 
+import { ValueHelpSelector, LabelData } from "./ValueHelpSelector"; 
 
 interface EditorProps {
   value: any;
@@ -113,14 +110,12 @@ interface CatalogEditorProps extends EditorProps {
 }
 
 export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag, rowOriginal }: CatalogEditorProps) => {
-  const [options, setOptions] = useState<TableSubRow[]>([]);
-  const [inputValue, setInputValue] = useState("");
-  const isSelectingRef = React.useRef(false);
-  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null); 
-
-  useEffect(() => {
+  // 1. Calculamos las opciones filtradas (Cascada + Opción 0)
+  const filteredData = useMemo<LabelData[]>(() => {
     const allLabels = getLabels();
-    const tagToSearch = catalogTag === "SOCIEDAD" ? "SOCIEDAD" : "CEDI"; 
+    
+    // Buscar catálogo padre
+    const tagToSearch = catalogTag === "SOCIEDAD" ? "SOCIEDAD" : "CEDI";
     let catalogSource = allLabels.find(l => l.idetiqueta === tagToSearch);
     
     if (!catalogSource) {
@@ -129,6 +124,7 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag, rowO
 
     let rawOptions = catalogSource && catalogSource.subRows ? [...catalogSource.subRows] : [];
 
+    // Lógica de Cascada (Filtrar CEDIs por Sociedad)
     if (catalogTag === "CEDI" && rowOriginal) {
       const currentSociedadId = Number(rowOriginal.idsociedad);
       if (currentSociedadId && currentSociedadId !== 0) {
@@ -136,6 +132,7 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag, rowO
       }
     }
 
+    // Opción "Todos" (0)
     const defaultLabel = catalogTag === "SOCIEDAD" ? "Todas las Sociedades" : "Todos los CEDIs";
     const optionZero: any = {
       idvalor: "0",
@@ -143,138 +140,48 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag, rowO
       idsociedad: "0", idcedi: "0", idetiqueta: "", idvalorpa: null, alias: "", secuencia: 0, imagen: null, ruta: null, descripcion: "", indice: "", coleccion: "", seccion: ""
     };
 
-    setOptions([optionZero, ...rawOptions]);
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [catalogTag]);
+    // Empaquetamos como LabelData[] para el ValueHelpSelector
+    // Creamos un "Grupo" ficticio con el nombre del catálogo
+    return [{
+        parent: true,
+        idetiqueta: tagToSearch,
+        etiqueta: catalogTag === "SOCIEDAD" ? "Sociedades Disponibles" : "CEDIs Disponibles",
+        idsociedad: "", idcedi: "", indice: "", coleccion: "", seccion: "", secuencia: 0, imagen: "", ruta: "", descripcion: "",
+        subRows: [optionZero, ...rawOptions]
+    }];
 
-  useEffect(() => {
-    const foundOption = options.find(o => 
-      o.idvalor === String(value) || 
-      (value !== "" && o.idvalor !== "" && !isNaN(Number(o.idvalor)) && !isNaN(Number(value)) && Number(o.idvalor) === Number(value))
-    );
-    if (foundOption) {
-      setInputValue(foundOption.valor);
-    } else {
-      if (catalogTag === "SOCIEDAD" && (value === "0" || value === 0)) {
-        setInputValue("Todas las Sociedades");
-      } else if (catalogTag === "CEDI" && (value === "0" || value === 0)) {
-        setInputValue("Todos los CEDIs");
-      } else {
-        setInputValue(value || "");
-      }
-    }
-  }, [value, options]);
+  }, [catalogTag, rowOriginal]); // Se recalcula si cambia el tag o la fila (cascada)
 
-  const filteredOptions = React.useMemo(() => {
-    if (!inputValue) return options;
-    const lowerInput = inputValue.toLowerCase();
-    return options.filter(opt => 
-      opt.valor.toLowerCase().includes(lowerInput) || 
-      opt.idvalor.toLowerCase().includes(lowerInput)
-    );
-  }, [options, inputValue]);
-
-  const handleChange = (e: any) => {
-    if (e.detail.item) {
-      isSelectingRef.current = true;
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-      const selectedId = e.detail.item.dataset.id;
-      const selectedText = e.detail.item.text;
-
-      setInputValue(selectedText);
-      onSave(selectedId); 
+  // 2. Handlers (Reutilizando la lógica simple de ParentValueEditor)
+  const handleSelect = (selectedValue: string | null) => {
+    if (selectedValue !== undefined) {
+      onSave(selectedValue);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if(e.key === "Enter") {
-      isSelectingRef.current = true;
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      // @ts-ignore
-      const inputText = inputValue;
-      const match = options.find(opt => opt.valor === inputText || opt.idvalor === inputText);
-      if (match) {
-        onSave(match.idvalor);
-      } else {
-        onCancel();
-      }
-    }
-    if(e.key === "Escape") onCancel();
+    if (e.key === "Escape") onCancel();
     if (e.key === "Tab") {
       if (onTab) {
         e.preventDefault(); 
         e.stopPropagation();
-
-        const currentText = inputValue;
-        const match = options.find(opt => 
-          opt.valor === currentText || 
-          opt.idvalor === currentText 
-        );
-
-        if (match) {
-          onTab(e, match.idvalor);
-        } else {
-          onTab(e, ""); 
-        }
+        onTab(e, value); 
       }
     }
   };
 
-  const handleBlur = () => {
-    const currentText = inputValue;
-
-    timeoutRef.current = setTimeout(() => {
-      if (!isSelectingRef.current) {
-        if (!currentText || currentText.trim() === "") {
-          onSave("");
-          return;
-        }
-
-        const match = options.find(opt => 
-          opt.valor === currentText || 
-          opt.idvalor === currentText 
-        );
-
-        if (match) {
-          onSave(match.idvalor);
-        } else {
-          onCancel();
-        }
-      }
-    }, 200);
-  };
-
-  const handleInput = (e: any) => {
-    setInputValue(e.target.value);
-  };
-
   return (
     <div 
-      onClick={(e) => e.stopPropagation()} 
-      onDoubleClick={(e) => e.stopPropagation()} 
-      style={{ width: "100%" }}
-    >
-    <ComboBox
-      value={inputValue}
-      onInput={handleInput}
-      onSelectionChange={handleChange}
       onKeyDown={handleKeyDown}
-      onBlur={handleBlur}
-      style={{ width: "100%" }}
-      filter="None"
+      onClick={(e) => e.stopPropagation()}
+      style={{ width: '100%' }}
     >
-      {filteredOptions.map(opt => (
-        <ComboBoxItem 
-          text={opt.valor}
-          key={opt.idvalor} 
-          data-id={opt.idvalor}
-          additionalText={opt.idvalor}
-        />
-      ))}
-    </ComboBox>
+      <ValueHelpSelector
+        data={filteredData} 
+        value={value}
+        onSelect={handleSelect}
+        placeholder={catalogTag === "SOCIEDAD" ? "Seleccionar Sociedad..." : "Seleccionar CEDI..."}
+      />
     </div>
   );
 };
