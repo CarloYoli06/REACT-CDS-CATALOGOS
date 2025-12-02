@@ -13,7 +13,7 @@ import {
 } from "@ui5/webcomponents-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { addOperation, getLabels, subscribe } from "../store/labelStore";
-import { TableParentRow } from "../services/labelService";
+import { TableParentRow, TableSubRow } from "../services/labelService";
 import { ValueHelpSelector, LabelData } from "./ValueHelpSelector";
 import ValidationErrorDialog from './ValidationErrorDialog';
 
@@ -26,6 +26,8 @@ const initialFormState = {
   DESCRIPCION: "",
   IMAGEN: "",
   ROUTE: "",
+  IDSOCIEDAD: "0",
+  IDCEDI: "0",
 };
 
 interface ModalNewValorProps {
@@ -45,17 +47,30 @@ function ModalNewValor({compact = false, preSelectedParent }: ModalNewValorProps
 
   const [selectedIdValorPa, setSelectedIdValorPa] = useState<string | null>(null);
 
+  // Estados para ComboBox
+  const [sociedadOptions, setSociedadOptions] = useState<TableSubRow[]>([]);
+  const [cediOptions, setCediOptions] = useState<TableSubRow[]>([]);
+  const [comboInputs, setComboInputs] = useState({ idsociedad: '', idcedi: '' });
+
   const [showErrorDialog, setShowErrorDialog] = useState(false);
 
   useEffect(() => {
-    const allLabels = getLabels();
-    const parents = allLabels.filter((label) => label.parent);
-    setParentLabels(parents);
+    const loadData = () => {
+        const allLabels = getLabels();
+        const parents = allLabels.filter((label) => label.parent);
+        setParentLabels(parents);
+
+        const sociedadLabel = allLabels.find(l => l.etiqueta === 'SOCIEDAD');
+        const cediLabel = allLabels.find(l => l.etiqueta === 'Catálogo de Centros de Distribución');
+
+        setSociedadOptions(sociedadLabel?.subRows || []);
+        setCediOptions(cediLabel?.subRows || []);
+    };
+
+    loadData();
 
     const unsubscribe = subscribe(() => {
-      const updatedLabels = getLabels();
-      const updatedParents = updatedLabels.filter((label) => label.parent);
-      setParentLabels(updatedParents);
+      loadData();
     });
 
     return () => unsubscribe();
@@ -178,11 +193,69 @@ function ModalNewValor({compact = false, preSelectedParent }: ModalNewValorProps
     const selectedId = e.detail.item.dataset.id;
     setSelectedParentId(selectedId);
 
+    // Update IDSOCIEDAD and IDCEDI based on parent
+    const parent = parentLabels.find(l => l.idetiqueta === selectedId);
+    if (parent) {
+        const initialSociedadText = sociedadOptions.find(o => o.idvalor === parent.idsociedad || o.valor === parent.idsociedad)?.valor || parent.idsociedad || '';
+        const initialCediText = cediOptions.find(o => o.idvalor === parent.idcedi || o.valor === parent.idcedi)?.valor || parent.idcedi || '';
+
+        setComboInputs({
+            idsociedad: initialSociedadText,
+            idcedi: initialCediText
+        });
+
+        setFormData(prev => {
+            const updated = {
+                ...prev,
+                IDSOCIEDAD: parent.idsociedad,
+                IDCEDI: parent.idcedi
+            };
+            latestFormRef.current = updated;
+            return updated;
+        });
+    }
+
     // Limpiar el IDVALORPA cuando se cambia la etiqueta padre
     setSelectedIdValorPa(null);
   };
 
-  // Manejador para cuando se selecciona un valor padre (IDVALORPA)
+  const handleComboBoxChange = (e: any, fieldName: 'IDSOCIEDAD' | 'IDCEDI') => {
+      const selectedItem = e.detail.item;
+      const inputValue = e.target.value;
+
+      let newId = '0';
+      let newText = inputValue;
+
+      const options = fieldName === 'IDSOCIEDAD' ? sociedadOptions : cediOptions;
+
+      if (selectedItem) {
+          newText = selectedItem.text;
+          const option = options.find(o => o.valor === newText);
+          if (option) {
+              newId = option.idvalor || option.valor || '0';
+          }
+      } else {
+          const option = options.find(o => o.valor === inputValue);
+          if (option) {
+              newId = option.idvalor || option.valor || '0';
+          }
+      }
+
+      setComboInputs(prev => ({
+          ...prev,
+          [fieldName === 'IDSOCIEDAD' ? 'idsociedad' : 'idcedi']: newText
+      }));
+
+      setFormData(prevState => {
+          const updatedState = {
+              ...prevState,
+              [fieldName]: newId
+          };
+          latestFormRef.current = updatedState;
+          return updatedState;
+      });
+  };
+
   const handleIdValorPaSelect = (idvalor: string | null) => {
     setSelectedIdValorPa(idvalor);
 
@@ -219,8 +292,8 @@ function ModalNewValor({compact = false, preSelectedParent }: ModalNewValorProps
 
         const fullValorObject = {
           ...snapshot,
-          IDSOCIEDAD: Number(parentLabel.idsociedad),
-          IDCEDI: Number(parentLabel.idcedi),
+          IDSOCIEDAD: Number(snapshot.IDSOCIEDAD) || Number(parentLabel.idsociedad),
+          IDCEDI: Number(snapshot.IDCEDI) || Number(parentLabel.idcedi),
           IDETIQUETA: parentLabel.idetiqueta,
           SECUENCIA: Number(snapshot.SECUENCIA) || 0,
         };
@@ -255,8 +328,23 @@ function ModalNewValor({compact = false, preSelectedParent }: ModalNewValorProps
     // Si no, lo dejamos en null (como estaba antes).
     if (preSelectedParent) {
       setSelectedParentId(preSelectedParent.idetiqueta);
+      // Populate sociedad/cedi from preSelectedParent
+      const initialSociedadText = sociedadOptions.find(o => o.idvalor === preSelectedParent.idsociedad || o.valor === preSelectedParent.idsociedad)?.valor || preSelectedParent.idsociedad || '';
+      const initialCediText = cediOptions.find(o => o.idvalor === preSelectedParent.idcedi || o.valor === preSelectedParent.idcedi)?.valor || preSelectedParent.idcedi || '';
+      
+      setComboInputs({
+          idsociedad: initialSociedadText,
+          idcedi: initialCediText
+      });
+      setFormData(prev => {
+          const updated = { ...prev, IDSOCIEDAD: preSelectedParent.idsociedad, IDCEDI: preSelectedParent.idcedi };
+          latestFormRef.current = updated;
+          return updated;
+      });
+
     } else {
       setSelectedParentId(null);
+      setComboInputs({ idsociedad: '', idcedi: '' });
     }
 
     setSelectedIdValorPa(null);
@@ -331,10 +419,40 @@ function ModalNewValor({compact = false, preSelectedParent }: ModalNewValorProps
                 name="IDVALOR"
                 value={formData.IDVALOR}
                 onInput={handleChange}
+                valueState={errors.IDVALOR ? "Negative" : "None"}
+                valueStateMessage={<div slot="valueStateMessage">{errors.IDVALOR}</div>}
               />
-              {errors.IDVALOR && (
-                <span style={{ color: "red" }}>{errors.IDVALOR}</span>
-              )}
+            </FormItem>
+
+            <FormItem labelContent={<Label>IDSOCIEDAD</Label>}>
+                <ComboBox
+                    name="IDSOCIEDAD"
+                    value={comboInputs.idsociedad}
+                    onSelectionChange={(e) => handleComboBoxChange(e, 'IDSOCIEDAD')}
+                    onInput={(e) => handleComboBoxChange(e, 'IDSOCIEDAD')}
+                    placeholder="Seleccione Sociedad"
+                >
+                    {sociedadOptions.map((option) => (
+                        <ComboBoxItem key={option.idvalor} text={option.valor} />
+                    ))}
+                </ComboBox>
+            </FormItem>
+
+            <FormItem labelContent={<Label>IDCEDI</Label>}>
+                <ComboBox
+                    name="IDCEDI"
+                    value={comboInputs.idcedi}
+                    onSelectionChange={(e) => handleComboBoxChange(e, 'IDCEDI')}
+                    onInput={(e) => handleComboBoxChange(e, 'IDCEDI')}
+                    placeholder="Seleccione CEDI"
+                    disabled={!formData.IDSOCIEDAD || formData.IDSOCIEDAD === '0'}
+                >
+                    {cediOptions
+                        .filter(option => Number(option.idvalorpa) === Number(formData.IDSOCIEDAD))
+                        .map((option) => (
+                            <ComboBoxItem key={option.idvalor} text={option.valor} />
+                        ))}
+                </ComboBox>
             </FormItem>
 
             <FormItem labelContent={<Label required>Valor</Label>}>

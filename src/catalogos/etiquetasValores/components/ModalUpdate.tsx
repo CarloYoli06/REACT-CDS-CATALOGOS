@@ -78,6 +78,8 @@ function ModalUpdate({
         DESCRIPCION: "",
         IMAGEN: "",
         ROUTE: "",
+        IDSOCIEDAD: "0",
+        IDCEDI: "0",
     };
     const [valorData, setValorData] = useState(initialValorState);
     const valorRef = useRef(initialValorState);
@@ -157,6 +159,7 @@ function ModalUpdate({
             let exists = false;
             for (const label of allLabels) {
                 if (label.subRows) {
+                    // Check if ID exists in any value, excluding the current one being edited (by internalId)
                     const match = label.subRows.find(v => v.idvalor === data.IDVALOR && v.internalId !== currentInternalId);
                     if (match) {
                         exists = true;
@@ -254,6 +257,44 @@ function ModalUpdate({
         });
     };
 
+    const handleValorComboBoxChange = (e: any, fieldName: 'IDSOCIEDAD' | 'IDCEDI') => {
+        const selectedItem = e.detail.item;
+        const inputValue = e.target.value;
+
+        let newId = '0';
+        let newText = inputValue;
+
+        const options = fieldName === 'IDSOCIEDAD' ? sociedadOptions : cediOptions;
+
+        if (selectedItem) {
+            newText = selectedItem.text;
+            const option = options.find(o => o.valor === newText);
+            if (option) {
+                newId = option.idvalor || option.valor || '0';
+            }
+        } else {
+            const option = options.find(o => o.valor === inputValue);
+            if (option) {
+                newId = option.idvalor || option.valor || '0';
+            }
+        }
+
+        // Update combo inputs state for display
+        setComboInputs(prev => ({
+            ...prev,
+            [fieldName === 'IDSOCIEDAD' ? 'idsociedad' : 'idcedi']: newText
+        }));
+
+        setValorData(prevState => {
+            const updatedState = {
+                ...prevState,
+                [fieldName]: newId
+            };
+            valorRef.current = updatedState;
+            return updatedState;
+        });
+    };
+
     // Transformar allLabels para ValueHelpSelector
     const valueHelpData = useMemo<LabelData[]>(() => {
         return allLabels.map((label) => ({
@@ -326,10 +367,21 @@ function ModalUpdate({
                 DESCRIPCION: valor.descripcion || "",
                 IMAGEN: valor.imagen || "",
                 ROUTE: valor.ruta || "",
+                IDSOCIEDAD: valor.idsociedad || "0",
+                IDCEDI: valor.idcedi || "0",
             };
             setValorData(formDataFromProp);
             valorRef.current = formDataFromProp;
             setSelectedIdValorPa(idValorPaInicial);
+
+            // Set initial combo inputs for Valor
+            const initialSociedadText = sociedadOptions.find(o => o.idvalor === valor.idsociedad || o.valor === valor.idsociedad)?.valor || valor.idsociedad || '';
+            const initialCediText = cediOptions.find(o => o.idvalor === valor.idcedi || o.valor === valor.idcedi)?.valor || valor.idcedi || '';
+
+            setComboInputs({
+                idsociedad: initialSociedadText,
+                idcedi: initialCediText
+            });
         } else {
             return;
         }
@@ -406,10 +458,11 @@ function ModalUpdate({
 
             const valorPaFinal = !snapshot.IDVALORPA ? null : snapshot.IDVALORPA;
             const updatePayload = {
-                id: snapshot.IDVALOR,
+                id: selectedValores[0].idvalor, // Use original ID for identification
                 internalId: selectedValores[0]?.internalId,
                 IDETIQUETA: selectedValorParent.idetiqueta,
                 updates: {
+                    IDVALOR: snapshot.IDVALOR, // Include IDVALOR in updates
                     VALOR: snapshot.VALOR,
                     IDVALORPA: valorPaFinal,
                     ALIAS: snapshot.ALIAS,
@@ -417,6 +470,8 @@ function ModalUpdate({
                     DESCRIPCION: snapshot.DESCRIPCION,
                     IMAGEN: snapshot.IMAGEN,
                     ROUTE: snapshot.ROUTE,
+                    IDSOCIEDAD: Number(snapshot.IDSOCIEDAD) || 0,
+                    IDCEDI: Number(snapshot.IDCEDI) || 0,
                 }
             };
 
@@ -649,8 +704,51 @@ function ModalUpdate({
 
                         <FormGroup headerText="Información del Valor">
                             <FormItem labelContent={<Label required>ID del Valor</Label>}>
-                                <Input name="IDVALOR" value={valorData.IDVALOR}  />
+                                <Input
+                                    name="IDVALOR"
+                                    value={valorData.IDVALOR}
+                                    onInput={handleValorChange}
+                                    valueState={errors.IDVALOR ? "Negative" : "None"}
+                                    valueStateMessage={<div slot="valueStateMessage">{errors.IDVALOR}</div>}
+                                />
                             </FormItem>
+
+                            <FormItem labelContent={<Label>IDSOCIEDAD</Label>}>
+                                <ComboBox
+                                    name="IDSOCIEDAD"
+                                    value={comboInputs.idsociedad} // Reusing the same state for simplicity, or create new if needed. Let's check logic.
+                                    // Actually, for Valor mode we might need separate state or reuse carefully.
+                                    // Let's reuse comboInputs but we need to handle the change correctly.
+                                    // Wait, comboInputs was designed for Catalogo mode.
+                                    // Let's see handleComboBoxChange. It updates catalogoData.
+                                    // We need a handler for Valor ComboBoxes.
+                                    onSelectionChange={(e) => handleValorComboBoxChange(e, 'IDSOCIEDAD')}
+                                    onInput={(e) => handleValorComboBoxChange(e, 'IDSOCIEDAD')}
+                                    placeholder="Seleccione Sociedad"
+                                >
+                                    {sociedadOptions.map((option) => (
+                                        <ComboBoxItem key={option.idvalor} text={option.valor} />
+                                    ))}
+                                </ComboBox>
+                            </FormItem>
+
+                            <FormItem labelContent={<Label>IDCEDI</Label>}>
+                                <ComboBox
+                                    name="IDCEDI"
+                                    value={comboInputs.idcedi}
+                                    onSelectionChange={(e) => handleValorComboBoxChange(e, 'IDCEDI')}
+                                    onInput={(e) => handleValorComboBoxChange(e, 'IDCEDI')}
+                                    placeholder="Seleccione CEDI"
+                                    disabled={!valorData.IDSOCIEDAD || valorData.IDSOCIEDAD === '0'}
+                                >
+                                    {cediOptions
+                                        .filter(option => Number(option.idvalorpa) === Number(valorData.IDSOCIEDAD))
+                                        .map((option) => (
+                                            <ComboBoxItem key={option.idvalor} text={option.valor} />
+                                        ))}
+                                </ComboBox>
+                            </FormItem>
+
                             <FormItem labelContent={<Label required>Valor</Label>}>
                                 <Input
                                     name="VALOR"
