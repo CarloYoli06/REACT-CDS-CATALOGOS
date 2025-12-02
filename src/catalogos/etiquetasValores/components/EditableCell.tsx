@@ -4,7 +4,7 @@ import { Input } from "@ui5/webcomponents-react";
 import { addOperation, getLabels, getActiveEditCell, setActiveEditCell, subscribe } from "../store/labelStore";
 import { TableParentRow, TableSubRow } from "../services/labelService";
 import { IndiceEditor, CatalogEditor, ParentValueEditor, NumericEditor, UniqueIdEditor } from "./Editors";
-import '@ui5/webcomponents-icons/dist/background'; 
+import '@ui5/webcomponents-icons/dist/background';
 import { Icon, Tokenizer, Token } from '@ui5/webcomponents-react';
 
 const COLUMN_TO_PAYLOAD_MAP: { [key: string]: string } = {
@@ -19,16 +19,16 @@ const COLUMN_TO_PAYLOAD_MAP: { [key: string]: string } = {
   descripcion: "DESCRIPCION",
   imagen: "IMAGEN",
   indice: "INDICE",
-  
+
   valor: "VALOR",
   alias: "ALIAS",
-  idvalor: "IDVALOR",     
+  idvalor: "IDVALOR",
   idvalorpa: "IDVALORPA"
 };
 
 const PARENT_NAVIGATION_ORDER = [
   "etiqueta",
-  "idetiqueta", 
+  "idetiqueta",
   "idsociedad",
   "idcedi",
   "coleccion",
@@ -44,7 +44,7 @@ const CHILD_NAVIGATION_ORDER = [
   "idvalor",
   "valor",
   "idvalorpa",
-  "idsociedad", 
+  "idsociedad",
   "idcedi",
   "alias",
   "secuencia",
@@ -271,35 +271,35 @@ export const ImagePopoverCell = ({ value }: { value: string }) => {
         onMouseLeave={handleMouseLeave}
         style={{
           display: 'flex',
-          alignItems: 'center', 
+          alignItems: 'center',
           justifyContent: 'flex-start',
           height: '100%',
           width: '100%',
         }}
       >
         {hasError ? (
-          <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.5rem', 
-              color: 'var(--sapContent_LabelColor)', 
-              fontSize: '0.75rem',
-              fontStyle: 'italic'
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            color: 'var(--sapContent_LabelColor)',
+            fontSize: '0.75rem',
+            fontStyle: 'italic'
           }}>
-             <Icon name="background" /> 
-             <span>No disponible</span> 
+            <Icon name="background" />
+            <span>No disponible</span>
           </div>
         ) : (
           <img
             src={value}
             onError={() => setHasError(true)}
-            style={{ 
-              height: "30px", 
-              width: "auto", 
-              maxHeight: "100%", 
-              cursor: "zoom-in" 
+            style={{
+              height: "30px",
+              width: "auto",
+              maxHeight: "100%",
+              cursor: "zoom-in"
             }}
-            alt="Vista previa" 
+            alt="Vista previa"
           />
         )}
       </div>
@@ -320,7 +320,7 @@ export const ImagePopoverCell = ({ value }: { value: string }) => {
 
 export const TokenViewCell = ({ value, onSave }: { value: any, onSave?: (val: any) => void }) => {
   const valueStr = (typeof value === 'string' && value) ? value : '';
-    
+
   if (!valueStr.trim()) return null;
 
   const indices = valueStr.split(',').map(v => v.trim()).filter(v => v !== '');
@@ -328,7 +328,7 @@ export const TokenViewCell = ({ value, onSave }: { value: any, onSave?: (val: an
   if (indices.length === 0) return null;
 
   const handleTokenDelete = (e: any) => {
-    e.preventDefault(); 
+    e.preventDefault();
     if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
 
     const tokenToDelete = e.detail?.tokens?.[0]?.text;
@@ -341,8 +341,8 @@ export const TokenViewCell = ({ value, onSave }: { value: any, onSave?: (val: an
   };
 
   return (
-    <Tokenizer 
-      title={valueStr} 
+    <Tokenizer
+      title={valueStr}
       style={{ width: '100%', padding: '0.25rem' }}
       onTokenDelete={handleTokenDelete}
       onClick={(e) => e.stopPropagation()}
@@ -356,39 +356,44 @@ export const TokenViewCell = ({ value, onSave }: { value: any, onSave?: (val: an
 
 interface CatalogViewCellProps {
   value: any;
-  catalogTag: "SOCIEDAD" | "CEDI"; 
+  catalogTag: "SOCIEDAD" | "CEDI";
 }
 
 export const CatalogViewCell = ({ value, catalogTag }: CatalogViewCellProps) => {
   const labelText = React.useMemo(() => {
-  if (!value) return "";
-      
-  const allLabels = getLabels();
-  const parentCatalog = allLabels.find(l => l.idetiqueta === catalogTag);
-      
-  if (parentCatalog && parentCatalog.subRows) {
-    const match = parentCatalog.subRows.find(row => {
-      if (row.idvalor === String(value)) return true;
-          
-      if (value !== "" && row.idvalor !== "" && !isNaN(Number(row.idvalor)) && !isNaN(Number(value))) {
-        return Number(row.idvalor) === Number(value);
-      }
-          
-      return false;
-    });
-      
-    return match ? match.valor : value; 
-  }
-  return value;
+    if (value === 0 || value === '0') return "TODOS";
+    if (!value) return "";
+
+    const allLabels = getLabels();
+    const parentCatalog = allLabels.find(l =>
+      l.idetiqueta === catalogTag ||
+      (catalogTag === 'SOCIEDAD' && l.etiqueta === 'SOCIEDAD') ||
+      (catalogTag === 'CEDI' && l.etiqueta === 'Catálogo de Centros de Distribución')
+    );
+
+    if (parentCatalog && parentCatalog.subRows) {
+      const match = parentCatalog.subRows.find(row => {
+        if (row.idvalor === String(value)) return true;
+
+        if (value !== "" && row.idvalor !== "" && !isNaN(Number(row.idvalor)) && !isNaN(Number(value))) {
+          return Number(row.idvalor) === Number(value);
+        }
+
+        return false;
+      });
+
+      return match ? match.valor : value;
+    }
+    return value;
   }, [value, catalogTag]);
 
   return (
-    <div style={{ 
-      whiteSpace: 'nowrap', 
-      overflow: 'hidden', 
+    <div style={{
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
       textOverflow: 'ellipsis',
-      width: '100%' 
-    }} 
+      width: '100%'
+    }}
       title={labelText}>
       {labelText}
     </div>
@@ -453,17 +458,23 @@ export const EditableCell = ({
     const processedValue = columnId === 'secuencia' ? Number(finalValueToSave) : finalValueToSave;
     setValue(processedValue);
 
+    const updates: any = {
+      [fieldName]: processedValue
+    };
+
+    if (fieldName === 'IDSOCIEDAD' && (processedValue === 0 || processedValue === '0')) {
+      updates['IDCEDI'] = 0;
+    }
+
     addOperation({
       collection: isParent ? 'labels' : 'values',
       action: 'UPDATE',
       payload: {
         id: id,
-        IDETIQUETA: isParent ? undefined : parentId, 
+        IDETIQUETA: isParent ? undefined : parentId,
         IDSOCIEDAD: Number(rowData.idsociedad),
         IDCEDI: Number(rowData.idcedi),
-        updates: {
-          [fieldName]: processedValue
-        }
+        updates: updates
       }
     });
   };
@@ -479,14 +490,14 @@ export const EditableCell = ({
 
     const isParent = 'parent' in rowData && rowData.parent === true;
     const navigationList = isParent ? PARENT_NAVIGATION_ORDER : CHILD_NAVIGATION_ORDER;
-    
+
     const currentIndex = navigationList.indexOf(columnId);
     if (currentIndex !== -1 && currentIndex < navigationList.length - 1) {
       const nextColumnId = navigationList[currentIndex + 1];
-        setActiveEditCell({ rowId: rowId, columnId: nextColumnId });
-      } else {
-        setActiveEditCell(null);
-      }
+      setActiveEditCell({ rowId: rowId, columnId: nextColumnId });
+    } else {
+      setActiveEditCell(null);
+    }
   };
 
   const renderEditor = () => {
@@ -494,7 +505,7 @@ export const EditableCell = ({
       value,
       onSave: handleSave,
       onCancel: handleCancel,
-      onTab: (e: any, val: any) => handleTab(e, val) 
+      onTab: (e: any, val: any) => handleTab(e, val)
     };
 
     switch (editorType) {
@@ -512,7 +523,7 @@ export const EditableCell = ({
         const isParent = 'parent' in rowData && rowData.parent === true;
         const currentId = isParent ? (rowData as TableParentRow).idetiqueta : (rowData as TableSubRow).idvalor;
         return (
-          <UniqueIdEditor 
+          <UniqueIdEditor
             {...commonProps}
             idType={isParent ? 'label' : 'value'}
             currentId={currentId}
@@ -526,14 +537,14 @@ export const EditableCell = ({
             onInput={(e) => setValue(e.target.value)}
             onBlur={() => handleSave()}
             onKeyDown={(e) => {
-              if(e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation();
-              if(e.key === "Enter") handleSave();
-              if(e.key === "Escape") handleCancel();
-              if(e.key === "Tab") {
+              if (e.key === "ArrowLeft" || e.key === "ArrowRight") e.stopPropagation();
+              if (e.key === "Enter") handleSave();
+              if (e.key === "Escape") handleCancel();
+              if (e.key === "Tab") {
                 handleTab(e, value);
               }
             }}
-            
+
             autoFocus
             style={{ width: '100%' }}
           />
@@ -546,22 +557,22 @@ export const EditableCell = ({
   }
 
   return (
-    <div 
+    <div
       onDoubleClick={(e) => {
         e.stopPropagation();
         setIsEditing(true);
       }}
-      style={{  
-        width: '100%', 
+      style={{
+        width: '100%',
         height: '100%',
         cursor: 'cell',
         display: 'flex',
-        alignItems: 'center', 
+        alignItems: 'center',
         justifyContent: 'flex-start'
       }}
       title="Doble clic para editar"
     >
-      { ViewComponent ? <ViewComponent value={value} onSave={handleSave} {...viewProps} /> : <PopoverCell value={value} /> }
+      {ViewComponent ? <ViewComponent value={value} onSave={handleSave} {...viewProps} /> : <PopoverCell value={value} />}
     </div>
   );
 };
@@ -569,28 +580,28 @@ export const EditableCell = ({
 export const ParentValueViewCell = ({ value }: { value: any }) => {
   const labelText = React.useMemo(() => {
     if (!value) return "";
-      
+
     const allLabels = getLabels();
-      
+
     for (const label of allLabels) {
       if (label.subRows) {
         const match = label.subRows.find(v => v.idvalor === String(value));
         if (match) {
-          return match.valor; 
+          return match.valor;
         }
       }
     }
-    return value; 
+    return value;
   }, [value]);
 
   return (
-    <div style={{ 
-        whiteSpace: 'nowrap', 
-        overflow: 'hidden', 
-        textOverflow: 'ellipsis',
-        width: '100%' 
+    <div style={{
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      width: '100%'
     }} title={String(labelText)}>
-        {labelText}
+      {labelText}
     </div>
   );
 };

@@ -8,10 +8,9 @@ import ValidationErrorDialog from './ValidationErrorDialog';
 
 interface ModalUpdateCatalogoProps {
     label: TableParentRow | null;
-    compact?: boolean;
 }
 
-function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProps) {
+function ModalUpdateCatalogo({ label }: ModalUpdateCatalogoProps) {
     const initialFormState: TableParentRow = {
         parent: true,
         idetiqueta: '',
@@ -51,14 +50,20 @@ function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProp
         const sociedadLabel = labels.find(l => l.etiqueta === 'SOCIEDAD');
         const cediLabel = labels.find(l => l.etiqueta === 'Catálogo de Centros de Distribución');
 
-        const sOptions = sociedadLabel?.subRows || [];
-        const cOptions = cediLabel?.subRows || [];
+        const todosSociedad: TableSubRow = {
+            idsociedad: '0', idcedi: '0', idetiqueta: 'SOCIEDAD', idvalor: '0', idvalorpa: null, valor: 'TODOS', alias: '', secuencia: 0, imagen: null, ruta: null, descripcion: '', indice: '', coleccion: '', seccion: ''
+        };
+        const todosCedi: TableSubRow = {
+            idsociedad: '0', idcedi: '0', idetiqueta: 'Catálogo de Centros de Distribución', idvalor: '0', idvalorpa: '0', valor: 'TODOS', alias: '', secuencia: 0, imagen: null, ruta: null, descripcion: '', indice: '', coleccion: '', seccion: ''
+        };
+
+        const sOptions = sociedadLabel?.subRows ? [todosSociedad, ...sociedadLabel.subRows] : [todosSociedad];
+        const cOptions = cediLabel?.subRows ? [todosCedi, ...cediLabel.subRows] : [todosCedi];
 
         setSociedadOptions(sOptions);
         setCediOptions(cOptions);
 
         if (label) {
-            console.log('Label recibido en ModalUpdate:', label);
             // Pre-carga el estado del formulario y los tokens
             setFormData(label);
             latestFormRef.current = label;
@@ -68,8 +73,11 @@ function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProp
             setInputValue('');
 
             // Set initial combo inputs based on IDs
-            const initialSociedadText = sOptions.find(o => o.idvalor === label.idsociedad || o.valor === label.idsociedad)?.valor || label.idsociedad || '';
-            const initialCediText = cOptions.find(o => o.idvalor === label.idcedi || o.valor === label.idcedi)?.valor || label.idcedi || '';
+            const foundSociedad = sOptions.find(o => String(o.idvalor) === String(label.idsociedad));
+            const initialSociedadText = foundSociedad ? foundSociedad.valor : String(label.idsociedad || '');
+
+            const foundCedi = cOptions.find(o => String(o.idvalor) === String(label.idcedi));
+            const initialCediText = foundCedi ? foundCedi.valor : String(label.idcedi || '');
 
             setComboInputs({
                 idsociedad: initialSociedadText,
@@ -186,251 +194,254 @@ function ModalUpdateCatalogo({ label, compact = false }: ModalUpdateCatalogoProp
                 ...prevState,
                 [fieldName]: newId
             };
+
+            // If society changes to 0 (TODOS), set CEDI to 0 (TODOS) automatically
+            // Logic aligned with ModalNewCatalogo
+            if (fieldName === 'idsociedad' && (newId === '0')) {
+                updatedState.idcedi = '0';
+                setComboInputs(prev => ({ ...prev, idcedi: 'TODOS' }));
+            }
+
             latestFormRef.current = updatedState;
             return updatedState;
         });
     };
 
-    // --- handleSubmit ya no recibe 'close' como argumento ---
-    const handleSubmit = () => { // ← Ya NO es async
-        const snapshot: TableParentRow = { ...(latestFormRef.current || formData) };
+    const handleSubmit = () => {
+        const snapshot = { ...(latestFormRef.current || formData) };
 
         if (!validate(snapshot)) {
             setShowErrorDialog(true);
             return;
         }
 
-        const updatePayload = {
-            id: label!.idetiqueta,
-            updates: {
-                IDETIQUETA: snapshot.idetiqueta,
-                IDSOCIEDAD: Number(snapshot.idsociedad) || 0,
-                // ... resto de campos
-            }
-        };
-
         addOperation({
             collection: 'labels',
             action: 'UPDATE',
-            payload: updatePayload
+            payload: {
+                id: snapshot.idetiqueta,
+                updates: {
+                    // IDETIQUETA: snapshot.idetiqueta, // Removed to prevent ID modification error
+                    IDSOCIEDAD: Number(snapshot.idsociedad),
+                    IDCEDI: Number(snapshot.idcedi),
+                    ETIQUETA: snapshot.etiqueta,
+                    INDICE: snapshot.indice,
+                    COLECCION: snapshot.coleccion,
+                    SECCION: snapshot.seccion,
+                    SECUENCIA: Number(snapshot.secuencia) || 0,
+                    IMAGEN: snapshot.imagen,
+                    ROUTE: snapshot.ruta,
+                    DESCRIPCION: snapshot.descripcion,
+                }
+            }
         });
 
-        closeModal(); // Cierra inmediatamente
+        closeModal();
     };
 
-    // --- NUEVO RENDER ---
-    return <>
-        <Button
-            design="Emphasized"
-            icon="edit"
-            accessibleName="Actualizar Catalogo" // Accesibilidad para lectores de pantalla
-            onClick={openModal} // <-- Llama a openModal
-            disabled={!label}   // <-- Deshabilita el botón si no hay label
-        >
-            {!compact && 'Actualizar Catalogo'}
-        </Button>
-        <ValidationErrorDialog
-            open={showErrorDialog}
-            errors={errors}
-            onClose={() => setShowErrorDialog(false)}
-            title="Errores al Actualizar Catálogo"
-        />
-        {/* El Dialog declarativo */}
-        <Dialog
-            open={isModalOpen}
-            onClose={closeModal}
-            headerText='Actualiza el Catalogo'
-            footer={
-                <FlexBox justifyContent={FlexBoxJustifyContent.End} fitContainer style={{ paddingBlock: '0.25rem' }}>
-                    <Button onClick={handleSubmit}>Actualizar</Button>
-                    <Button onClick={closeModal}>Cancelar</Button>
-                </FlexBox>
-            }
-        >
-            {/* El Form ahora es un hijo directo y se re-renderizará con el estado */}
-            <Form>
-                <FormGroup headerText='Informacion del Catalogo'>
+    return (
+        <>
+            <Button design="Transparent" icon="edit" onClick={openModal} accessibleName="Editar Catalogo" />
+            <ValidationErrorDialog
+                open={showErrorDialog}
+                errors={errors}
+                onClose={() => setShowErrorDialog(false)}
+                title="Errores al Actualizar Catálogo"
+            />
+            <Dialog
+                open={isModalOpen}
+                onClose={closeModal}
+                headerText='Actualizar Catalogo'
+                footer={
+                    <FlexBox justifyContent={FlexBoxJustifyContent.End} fitContainer style={{ paddingBlock: '0.25rem' }}>
+                        <Button onClick={handleSubmit}>Actualizar</Button>
+                        <Button onClick={closeModal}>Cancelar</Button>
+                    </FlexBox>
+                }
+            >
+                <Form>
+                    <FormGroup headerText='Informacion del Catalogo'>
 
-                    <FormItem labelContent={<Label required>ID de la etiqueta</Label>}>
-                        <Input
-                            name="idetiqueta"
-                            value={formData.idetiqueta}
-                            onInput={handleChange}
-                            valueState={errors.idetiqueta ? "Negative" : "None"}
-                            valueStateMessage={<div slot="valueStateMessage">{errors.idetiqueta}</div>}
-                        />
-                    </FormItem>
+                        <FormItem labelContent={<Label required>ID de la etiqueta</Label>}>
+                            <Input
+                                name="idetiqueta"
+                                value={formData.idetiqueta}
+                                onInput={handleChange}
+                                valueState={errors.idetiqueta ? "Negative" : "None"}
+                                valueStateMessage={<div slot="valueStateMessage">{errors.idetiqueta}</div>}
+                                disabled // ID usually not editable
+                            />
+                        </FormItem>
 
-                    <FormItem labelContent={<Label >IDSOCIEDAD</Label>}>
-                        <ComboBox
-                            name="idsociedad"
-                            value={comboInputs.idsociedad}
-                            onSelectionChange={(e) => handleComboBoxChange(e, 'idsociedad')}
-                            onInput={(e) => handleComboBoxChange(e, 'idsociedad')}
-                            placeholder="Seleccione Sociedad"
-                            valueState={errors.idsociedad ? "Negative" : "None"}
-                            valueStateMessage={<div slot="valueStateMessage">{errors.idsociedad}</div>}
-                        >
-                            {sociedadOptions.map((option) => (
-                                <ComboBoxItem key={option.idvalor} text={option.valor} />
-                            ))}
-                        </ComboBox>
-                    </FormItem>
-
-                    <FormItem labelContent={<Label>IDCEDI</Label>}>
-                        <ComboBox
-                            name="idcedi"
-                            value={comboInputs.idcedi}
-                            onSelectionChange={(e) => handleComboBoxChange(e, 'idcedi')}
-                            onInput={(e) => handleComboBoxChange(e, 'idcedi')}
-                            placeholder="Seleccione CEDI"
-                            valueState={errors.idcedi ? "Negative" : "None"}
-                            valueStateMessage={<div slot="valueStateMessage">{errors.idcedi}</div>}
-                            disabled={!formData.idsociedad || formData.idsociedad === '0'}
-                        >
-                            {cediOptions
-                                .filter(option => Number(option.idvalorpa) === Number(formData.idsociedad))
-                                .map((option) => (
+                        <FormItem labelContent={<Label >IDSOCIEDAD</Label>}>
+                            <ComboBox
+                                name="idsociedad"
+                                value={comboInputs.idsociedad}
+                                onSelectionChange={(e) => handleComboBoxChange(e, 'idsociedad')}
+                                onInput={(e) => handleComboBoxChange(e, 'idsociedad')}
+                                placeholder="Seleccione Sociedad"
+                                valueState={errors.idsociedad ? "Negative" : "None"}
+                                valueStateMessage={<div slot="valueStateMessage">{errors.idsociedad}</div>}
+                            >
+                                {sociedadOptions.map((option) => (
                                     <ComboBoxItem key={option.idvalor} text={option.valor} />
                                 ))}
-                        </ComboBox>
-                    </FormItem>
+                            </ComboBox>
+                        </FormItem>
 
-                    <FormItem labelContent={<Label required>ETIQUETA</Label>}>
-                        <Input
-                            name="etiqueta"
-                            value={formData.etiqueta}
-                            onInput={handleChange}
-                            valueState={errors.etiqueta ? "Negative" : "None"}
-                            valueStateMessage={<div slot="valueStateMessage">{errors.etiqueta}</div>}
-                        />
-                    </FormItem>
+                        <FormItem labelContent={<Label>IDCEDI</Label>}>
+                            <ComboBox
+                                name="idcedi"
+                                value={comboInputs.idcedi}
+                                onSelectionChange={(e) => handleComboBoxChange(e, 'idcedi')}
+                                onInput={(e) => handleComboBoxChange(e, 'idcedi')}
+                                placeholder="Seleccione CEDI"
+                                valueState={errors.idcedi ? "Negative" : "None"}
+                                valueStateMessage={<div slot="valueStateMessage">{errors.idcedi}</div>}
+                                disabled={!formData.idsociedad || formData.idsociedad === '0'}
+                            >
+                                {cediOptions
+                                    .filter(option => Number(option.idvalorpa) === Number(formData.idsociedad) || (option.idvalor === '0' && formData.idsociedad === '0'))
+                                    .map((option) => (
+                                        <ComboBoxItem key={option.idvalor} text={option.valor} />
+                                    ))}
+                            </ComboBox>
+                        </FormItem>
 
-                    <FormItem labelContent={<Label required>INDICE</Label>}>
-                        <MultiInput
-                            name="indice" // Usado por 'validate'
-                            value={inputValue}
-                            placeholder="Escriba y presione Enter"
-                            valueState={errors.indice ? "Negative" : "None"}
-                            valueStateMessage={<div slot="valueStateMessage">{errors.indice}</div>}
+                        <FormItem labelContent={<Label required>ETIQUETA</Label>}>
+                            <Input
+                                name="etiqueta"
+                                value={formData.etiqueta}
+                                onInput={handleChange}
+                                valueState={errors.etiqueta ? "Negative" : "None"}
+                                valueStateMessage={<div slot="valueStateMessage">{errors.etiqueta}</div>}
+                            />
+                        </FormItem>
 
-                            tokens={indiceTokens.map((tokenText, index) => (
-                                <Token key={index} text={tokenText} />
-                            ))}
+                        <FormItem labelContent={<Label required>INDICE</Label>}>
+                            <MultiInput
+                                name="indice"
+                                value={inputValue}
+                                placeholder="Escriba y presione Enter"
+                                valueState={errors.indice ? "Negative" : "None"}
+                                valueStateMessage={<div slot="valueStateMessage">{errors.indice}</div>}
 
-                            onInput={(e) => setInputValue(e.target.value)}
+                                tokens={indiceTokens.map((tokenText, index) => (
+                                    <Token key={index} text={tokenText} />
+                                ))}
 
-                            onTokenDelete={(e) => {
-                                if (!e.detail.tokens || e.detail.tokens.length === 0) return;
-                                const deletedText = e.detail.tokens[0].text;
-                                const newTokens = indiceTokens.filter((t) => t !== deletedText);
-                                setIndiceTokens(newTokens);
+                                onInput={(e) => setInputValue(e.target.value)}
 
-                                // ¡Usamos handleChange para actualizar el estado principal!
-                                const newIndiceString = newTokens.join(',');
-                                const fakeEvent = { currentTarget: { getAttribute: () => 'indice' }, detail: { value: newIndiceString } };
-                                handleChange(fakeEvent);
-                            }}
-
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && inputValue.trim() !== '') {
-                                    e.preventDefault();
-                                    const newText = inputValue.trim();
-                                    if (!indiceTokens.includes(newText)) {
-                                        const newTokens = [...indiceTokens, newText];
-                                        setIndiceTokens(newTokens);
-
-                                        const newIndiceString = newTokens.join(',');
-                                        const fakeEvent = { currentTarget: { getAttribute: () => 'indice' }, detail: { value: newIndiceString } };
-                                        handleChange(fakeEvent);
-                                    }
-                                    setInputValue('');
-                                }
-                            }}
-
-                            // Agregamos onPaste (faltaba en tu código)
-                            onPaste={(e) => {
-                                e.preventDefault();
-                                const pasteText = e.clipboardData.getData('text');
-                                const pastedTokens = pasteText.split(',')
-                                    .map(t => t.trim())
-                                    .filter(t => t !== '' && !indiceTokens.includes(t));
-
-                                if (pastedTokens.length > 0) {
-                                    const newTokens = [...indiceTokens, ...pastedTokens];
+                                onTokenDelete={(e) => {
+                                    if (!e.detail.tokens || e.detail.tokens.length === 0) return;
+                                    const deletedText = e.detail.tokens[0].text;
+                                    const newTokens = indiceTokens.filter((t) => t !== deletedText);
                                     setIndiceTokens(newTokens);
 
                                     const newIndiceString = newTokens.join(',');
                                     const fakeEvent = { currentTarget: { getAttribute: () => 'indice' }, detail: { value: newIndiceString } };
                                     handleChange(fakeEvent);
-                                    setInputValue('');
-                                }
-                            }}
+                                }}
 
-                            onBlur={() => {
-                                const newText = inputValue.trim();
-                                if (newText !== '') {
-                                    if (!indiceTokens.includes(newText)) {
-                                        const newTokens = [...indiceTokens, newText];
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && inputValue.trim() !== '') {
+                                        e.preventDefault();
+                                        const newText = inputValue.trim();
+                                        if (!indiceTokens.includes(newText)) {
+                                            const newTokens = [...indiceTokens, newText];
+                                            setIndiceTokens(newTokens);
+
+                                            const newIndiceString = newTokens.join(',');
+                                            const fakeEvent = { currentTarget: { getAttribute: () => 'indice' }, detail: { value: newIndiceString } };
+                                            handleChange(fakeEvent);
+                                        }
+                                        setInputValue('');
+                                    }
+                                }}
+
+                                onPaste={(e) => {
+                                    e.preventDefault();
+                                    const pasteText = e.clipboardData.getData('text');
+                                    const pastedTokens = pasteText.split(',')
+                                        .map(t => t.trim())
+                                        .filter(t => t !== '' && !indiceTokens.includes(t));
+
+                                    if (pastedTokens.length > 0) {
+                                        const newTokens = [...indiceTokens, ...pastedTokens];
                                         setIndiceTokens(newTokens);
 
                                         const newIndiceString = newTokens.join(',');
                                         const fakeEvent = { currentTarget: { getAttribute: () => 'indice' }, detail: { value: newIndiceString } };
                                         handleChange(fakeEvent);
+                                        setInputValue('');
                                     }
-                                    setInputValue('');
-                                }
-                            }}
-                        />
-                    </FormItem>
+                                }}
 
-                    <FormItem labelContent={<Label required>COLECCION</Label>}>
-                        <Input
-                            name="coleccion"
-                            value={formData.coleccion}
-                            onInput={handleChange}
-                            valueState={errors.coleccion ? "Negative" : "None"}
-                            valueStateMessage={<div slot="valueStateMessage">{errors.coleccion}</div>}
-                        />
-                    </FormItem>
+                                onBlur={() => {
+                                    const newText = inputValue.trim();
+                                    if (newText !== '') {
+                                        if (!indiceTokens.includes(newText)) {
+                                            const newTokens = [...indiceTokens, newText];
+                                            setIndiceTokens(newTokens);
 
-                    <FormItem labelContent={<Label required>SECCION</Label>}>
-                        <Input
-                            name="seccion"
-                            value={formData.seccion}
-                            onInput={handleChange}
-                            valueState={errors.seccion ? "Negative" : "None"}
-                            valueStateMessage={<div slot="valueStateMessage">{errors.seccion}</div>}
-                        />
-                    </FormItem>
+                                            const newIndiceString = newTokens.join(',');
+                                            const fakeEvent = { currentTarget: { getAttribute: () => 'indice' }, detail: { value: newIndiceString } };
+                                            handleChange(fakeEvent);
+                                        }
+                                        setInputValue('');
+                                    }
+                                }}
+                            />
+                        </FormItem>
 
-                    <FormItem labelContent={<Label>SECUENCIA</Label>}>
-                        <Input
-                            name="secuencia"
-                            type="Number"
-                            value={String(formData.secuencia ?? '')}
-                            onInput={handleChange}
-                            valueState={errors.secuencia ? "Negative" : "None"}
-                            valueStateMessage={<div slot="valueStateMessage">{errors.secuencia}</div>}
-                        />
-                    </FormItem>
+                        <FormItem labelContent={<Label required>COLECCION</Label>}>
+                            <Input
+                                name="coleccion"
+                                value={formData.coleccion}
+                                onInput={handleChange}
+                                valueState={errors.coleccion ? "Negative" : "None"}
+                                valueStateMessage={<div slot="valueStateMessage">{errors.coleccion}</div>}
+                            />
+                        </FormItem>
 
-                    <FormItem labelContent={<Label>Imagen</Label>}>
-                        <Input name="imagen" value={formData.imagen} onInput={handleChange} />
-                    </FormItem>
+                        <FormItem labelContent={<Label required>SECCION</Label>}>
+                            <Input
+                                name="seccion"
+                                value={formData.seccion}
+                                onInput={handleChange}
+                                valueState={errors.seccion ? "Negative" : "None"}
+                                valueStateMessage={<div slot="valueStateMessage">{errors.seccion}</div>}
+                            />
+                        </FormItem>
 
-                    <FormItem labelContent={<Label>Ruta</Label>}>
-                        <Input name="ruta" value={formData.ruta} onInput={handleChange} />
-                    </FormItem>
+                        <FormItem labelContent={<Label>SECUENCIA</Label>}>
+                            <Input
+                                name="secuencia"
+                                type="Number"
+                                value={String(formData.secuencia ?? '')}
+                                onInput={handleChange}
+                                valueState={errors.secuencia ? "Negative" : "None"}
+                                valueStateMessage={<div slot="valueStateMessage">{errors.secuencia}</div>}
+                            />
+                        </FormItem>
 
-                    <FormItem labelContent={<Label>Descripcion</Label>}>
-                        <Input name="descripcion" value={formData.descripcion} onInput={handleChange} />
-                    </FormItem>
+                        <FormItem labelContent={<Label>Imagen</Label>}>
+                            <Input name="imagen" value={formData.imagen} onInput={handleChange} />
+                        </FormItem>
 
-                </FormGroup>
-            </Form>
-        </Dialog>
-    </>
+                        <FormItem labelContent={<Label>Ruta</Label>}>
+                            <Input name="ruta" value={formData.ruta} onInput={handleChange} />
+                        </FormItem>
+
+                        <FormItem labelContent={<Label>Descripcion</Label>}>
+                            <Input name="descripcion" value={formData.descripcion} onInput={handleChange} />
+                        </FormItem>
+
+                    </FormGroup>
+                </Form>
+            </Dialog>
+        </>
+    );
 }
 
 export default ModalUpdateCatalogo;

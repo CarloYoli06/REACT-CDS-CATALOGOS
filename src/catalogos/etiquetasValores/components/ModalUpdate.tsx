@@ -93,8 +93,24 @@ function ModalUpdate({
             const sociedadLabel = labels.find(l => l.etiqueta === 'SOCIEDAD');
             const cediLabel = labels.find(l => l.etiqueta === 'Catálogo de Centros de Distribución');
 
-            setSociedadOptions(sociedadLabel?.subRows || []);
-            setCediOptions(cediLabel?.subRows || []);
+            const todosSociedad: TableSubRow = {
+                idsociedad: '0', idcedi: '0', idetiqueta: 'SOCIEDAD', idvalor: '0', idvalorpa: null, valor: 'TODOS', alias: '', secuencia: 0, imagen: null, ruta: null, descripcion: '', indice: '', coleccion: '', seccion: ''
+            };
+            const todosCedi: TableSubRow = {
+                idsociedad: '0', idcedi: '0', idetiqueta: 'Catálogo de Centros de Distribución', idvalor: '0', idvalorpa: '0', valor: 'TODOS', alias: '', secuencia: 0, imagen: null, ruta: null, descripcion: '', indice: '', coleccion: '', seccion: ''
+            };
+
+            if (sociedadLabel && sociedadLabel.subRows) {
+                setSociedadOptions([todosSociedad, ...sociedadLabel.subRows]);
+            } else {
+                setSociedadOptions([todosSociedad]);
+            }
+
+            if (cediLabel && cediLabel.subRows) {
+                setCediOptions([todosCedi, ...cediLabel.subRows]);
+            } else {
+                setCediOptions([todosCedi]);
+            }
         };
 
         loadData();
@@ -181,6 +197,26 @@ function ModalUpdate({
             if (option) {
                 newId = option.idvalor || option.valor || '0';
             }
+        }
+
+        // Logic for auto-selecting TODOS for CEDI
+        if (fieldName === 'idsociedad' && newId === '0') {
+            setComboInputs(prev => ({
+                ...prev,
+                idsociedad: newText,
+                idcedi: 'TODOS'
+            }));
+
+            setCatalogoData(prevState => {
+                const updatedState = {
+                    ...prevState,
+                    idsociedad: newId,
+                    idcedi: '0'
+                };
+                catalogoRef.current = updatedState;
+                return updatedState;
+            });
+            return;
         }
 
         setComboInputs(prev => ({
@@ -342,7 +378,7 @@ function ModalUpdate({
             const updatePayload = {
                 id: label.idetiqueta,
                 updates: {
-                    IDETIQUETA: snapshot.idetiqueta,
+                    // IDETIQUETA: snapshot.idetiqueta, // Removed to prevent ID modification error
                     IDSOCIEDAD: Number(snapshot.idsociedad) || 0,
                     IDCEDI: Number(snapshot.idcedi) || 0,
                     COLECCION: snapshot.coleccion,
@@ -468,7 +504,7 @@ function ModalUpdate({
                                     disabled={!catalogoData.idsociedad || catalogoData.idsociedad === '0'}
                                 >
                                     {cediOptions
-                                        .filter(option => Number(option.idvalorpa) === Number(catalogoData.idsociedad))
+                                        .filter(option => Number(option.idvalorpa) === Number(catalogoData.idsociedad) || (option.idvalor === '0' && Number(catalogoData.idsociedad) === 0))
                                         .map((option) => (
                                             <ComboBoxItem key={option.idvalor} text={option.valor} />
                                         ))}

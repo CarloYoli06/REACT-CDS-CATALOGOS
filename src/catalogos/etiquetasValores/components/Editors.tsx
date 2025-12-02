@@ -10,7 +10,7 @@ import '@ui5/webcomponents-icons/dist/value-help';
 import '@ui5/webcomponents-icons/dist/decline';
 import { getLabels } from "../store/labelStore";
 import { TableSubRow } from "../services/labelService";
-import ValueHelpSelector from "./ValueHelpSelector"; 
+import ValueHelpSelector from "./ValueHelpSelector";
 
 interface EditorProps {
   value: any;
@@ -63,7 +63,7 @@ export const IndiceEditor = ({ value, onSave, onCancel, onTab }: EditorProps) =>
       e.stopPropagation();
       e.preventDefault();
       if (inputValue.trim()) {
-        if(!tokens.includes(inputValue.trim())){
+        if (!tokens.includes(inputValue.trim())) {
           setTokens([...tokens, inputValue.trim()]);
         }
         setInputValue("");
@@ -77,16 +77,16 @@ export const IndiceEditor = ({ value, onSave, onCancel, onTab }: EditorProps) =>
     }
     if (e.key === "Tab") {
       if (onTab) {
-        e.preventDefault(); 
+        e.preventDefault();
         e.stopPropagation();
 
         let finalTokens = [...tokens];
         const textPending = inputValue.trim();
-            
+
         if (textPending !== "" && !tokens.includes(textPending)) {
           finalTokens.push(textPending);
         }
-            
+
         onTab(e, finalTokens.join(','));
       }
     }
@@ -116,13 +116,20 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
   const [options, setOptions] = useState<TableSubRow[]>([]);
   const [inputValue, setInputValue] = useState("");
   const isSelectingRef = React.useRef(false);
-  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null); 
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const allLabels = getLabels();
-    const parentCatalog = allLabels.find(l => l.idetiqueta === catalogTag);
+    const parentCatalog = allLabels.find(l =>
+      l.idetiqueta === catalogTag ||
+      (catalogTag === 'SOCIEDAD' && l.etiqueta === 'SOCIEDAD') ||
+      (catalogTag === 'CEDI' && l.etiqueta === 'Catálogo de Centros de Distribución')
+    );
     if (parentCatalog && parentCatalog.subRows) {
-      setOptions(parentCatalog.subRows);
+      const todosOption: TableSubRow = {
+        idsociedad: '0', idcedi: '0', idetiqueta: catalogTag, idvalor: '0', idvalorpa: catalogTag === 'CEDI' ? '0' : null, valor: 'TODOS', alias: '', secuencia: 0, imagen: null, ruta: null, descripcion: '', indice: '', coleccion: '', seccion: ''
+      };
+      setOptions([todosOption, ...parentCatalog.subRows]);
     }
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -130,8 +137,8 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
   }, [catalogTag]);
 
   useEffect(() => {
-    const foundOption = options.find(o => 
-      o.idvalor === String(value) || 
+    const foundOption = options.find(o =>
+      o.idvalor === String(value) ||
       (value !== "" && o.idvalor !== "" && !isNaN(Number(o.idvalor)) && !isNaN(Number(value)) && Number(o.idvalor) === Number(value))
     );
     if (foundOption) {
@@ -144,8 +151,8 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
   const filteredOptions = React.useMemo(() => {
     if (!inputValue) return options;
     const lowerInput = inputValue.toLowerCase();
-    return options.filter(opt => 
-      opt.valor.toLowerCase().includes(lowerInput) || 
+    return options.filter(opt =>
+      opt.valor.toLowerCase().includes(lowerInput) ||
       opt.idvalor.toLowerCase().includes(lowerInput)
     );
   }, [options, inputValue]);
@@ -159,12 +166,12 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
       const selectedText = e.detail.item.text;
 
       setInputValue(selectedText);
-      onSave(selectedId); 
+      onSave(selectedId);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if(e.key === "Enter") {
+    if (e.key === "Enter") {
       isSelectingRef.current = true;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       // @ts-ignore
@@ -176,22 +183,22 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
         onCancel();
       }
     }
-    if(e.key === "Escape") onCancel();
+    if (e.key === "Escape") onCancel();
     if (e.key === "Tab") {
       if (onTab) {
-        e.preventDefault(); 
+        e.preventDefault();
         e.stopPropagation();
 
         const currentText = inputValue;
-        const match = options.find(opt => 
-          opt.valor === currentText || 
-          opt.idvalor === currentText 
+        const match = options.find(opt =>
+          opt.valor === currentText ||
+          opt.idvalor === currentText
         );
 
         if (match) {
           onTab(e, match.idvalor);
         } else {
-          onTab(e, ""); 
+          onTab(e, "");
         }
       }
     }
@@ -207,9 +214,9 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
           return;
         }
 
-        const match = options.find(opt => 
-          opt.valor === currentText || 
-          opt.idvalor === currentText 
+        const match = options.find(opt =>
+          opt.valor === currentText ||
+          opt.idvalor === currentText
         );
 
         if (match) {
@@ -226,29 +233,29 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
   };
 
   return (
-    <div 
-      onClick={(e) => e.stopPropagation()} 
-      onDoubleClick={(e) => e.stopPropagation()} 
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
       style={{ width: "100%" }}
     >
-    <ComboBox
-      value={inputValue}
-      onInput={handleInput}
-      onSelectionChange={handleChange}
-      onKeyDown={handleKeyDown}
-      onBlur={handleBlur}
-      style={{ width: "100%" }}
-      filter="None"
-    >
-      {filteredOptions.map(opt => (
-        <ComboBoxItem 
-          text={opt.valor}
-          key={opt.idvalor} 
-          data-id={opt.idvalor}
-          additionalText={opt.idvalor}
-        />
-      ))}
-    </ComboBox>
+      <ComboBox
+        value={inputValue}
+        onInput={handleInput}
+        onSelectionChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        style={{ width: "100%" }}
+        filter="None"
+      >
+        {filteredOptions.map(opt => (
+          <ComboBoxItem
+            text={opt.valor}
+            key={opt.idvalor}
+            data-id={opt.idvalor}
+            additionalText={opt.idvalor}
+          />
+        ))}
+      </ComboBox>
     </div>
   );
 };
@@ -267,21 +274,21 @@ export const ParentValueEditor = ({ value, onSave, onCancel, onTab }: EditorProp
     if (e.key === "Escape") onCancel();
     if (e.key === "Tab") {
       if (onTab) {
-        e.preventDefault(); 
+        e.preventDefault();
         e.stopPropagation();
-        onTab(e, value); 
+        onTab(e, value);
       }
     }
   };
 
   return (
-    <div 
+    <div
       onKeyDown={handleKeyDown}
       onClick={(e) => e.stopPropagation()}
       style={{ width: '100%' }}
     >
       <ValueHelpSelector
-        data={allData} 
+        data={allData}
         value={value}
         onSelect={handleSelect}
         placeholder="Seleccionar Padre..."
@@ -303,16 +310,16 @@ export const NumericEditor = ({ value, onSave, onCancel, onTab }: EditorProps) =
     if (e.key === "Enter") {
       onSave(inputValue);
     }
-    
+
     if (e.key === "Escape") {
       e.stopPropagation();
       onCancel();
     }
     if (e.key === "Tab") {
       if (onTab) {
-        e.preventDefault(); 
+        e.preventDefault();
         e.stopPropagation();
-        onTab(e, inputValue); 
+        onTab(e, inputValue);
       }
     }
   };
@@ -334,19 +341,19 @@ export const NumericEditor = ({ value, onSave, onCancel, onTab }: EditorProps) =
 interface UniqueIdEditorProps extends EditorProps {
   idType: 'label' | 'value';
   currentId: string;
-  parentId?: string; 
+  parentId?: string;
 }
 
 export const UniqueIdEditor = ({ value, onSave, onCancel, onTab, idType, currentId }: UniqueIdEditorProps) => {
   const [inputValue, setInputValue] = useState(value?.toString() || "");
-  const [errorState, setErrorState] = useState<"None" | "Negative">("None"); 
+  const [errorState, setErrorState] = useState<"None" | "Negative">("None");
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     const val = inputValue.trim();
-      
+
     if (!val) {
-      setErrorState("None"); 
+      setErrorState("None");
       return;
     }
 
@@ -368,7 +375,7 @@ export const UniqueIdEditor = ({ value, onSave, onCancel, onTab, idType, current
     }
 
     if (exists) {
-      setErrorState("Negative"); 
+      setErrorState("Negative");
       setErrorMessage(`El ID "${val}" ya existe en el sistema.`);
     } else {
       setErrorState("None");
@@ -393,9 +400,9 @@ export const UniqueIdEditor = ({ value, onSave, onCancel, onTab, idType, current
     }
     if (e.key === "Tab") {
       if (onTab) {
-        e.preventDefault(); 
+        e.preventDefault();
         e.stopPropagation();
-        onTab(e, inputValue); 
+        onTab(e, inputValue);
       }
     }
   };
