@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   // FIC: AÑADIR: Configuración de Build para optimizar el manejo de assets grandes
+  /*
   build: {
     // Definir un límite bajo para que las assets pequeñas sean inlined
     assetsInlineLimit: 4096, // Valor por defecto. Puedes bajarlo a 0 si es necesario
@@ -29,4 +30,5 @@ export default defineConfig({
       }
     }
   }
+  */
 });
