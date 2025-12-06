@@ -407,20 +407,18 @@ const handleParentSelect = (selectedParents: TableParentRow[]) => {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: headerContent ? '0.5rem' : '0' }}>
           <Title level="H4">Etiquetas y Valores</Title>
-          {pendingOps.length > 0 && (
-            // --- 3. CAMBIO AQUÍ: Renderizado Condicional del Texto ---
-            <Button
-              icon="pending"
-              design="Emphasized"
-              onClick={() => setShowOpsDialog(true)}
-              tooltip="Operaciones Pendientes" // Añadido tooltip para accesibilidad en móvil
-            >
-              {isMobileButton
-                ? `(${pendingOps.length})`
-                : `Operaciones Pendientes (${pendingOps.length})`
-              }
-            </Button>
-          )}
+          <Button
+            icon="pending"
+            design="Emphasized"
+            onClick={() => setShowOpsDialog(true)}
+            disabled={pendingOps.length === 0}
+            tooltip="Operaciones Pendientes" // Añadido tooltip para accesibilidad en móvil
+          >
+            {isMobileButton
+              ? `(${pendingOps.length})`
+              : `Operaciones Pendientes (${pendingOps.length})`
+            }
+          </Button>
         </div>
 
         {headerContent && (
