@@ -16,7 +16,7 @@ import '@ui5/webcomponents-icons/dist/pending';
 import '@ui5/webcomponents-icons/dist/delete';
 import { TableParentRow, TableSubRow } from '../services/labelService';
 import { useMemo, useRef, useState, useEffect, } from 'react';
-import { setLabels, getOperations, removeOperation, subscribe, Operation } from '../store/labelStore';
+import { getLabels, setLabels, getOperations, removeOperation, subscribe, Operation } from '../store/labelStore';
 import { EditableCell, ImagePopoverCell, TokenViewCell, CatalogViewCell, ParentValueViewCell } from './EditableCell';
 
 interface TableLabelsProps {
@@ -299,71 +299,66 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
     }
   }), [initialExpanded]);
 
-  const handleChildSelectInternal = (selectedValores: TableSubRow[], parentData: TableParentRow) => {
-    const currentData = dataRef.current;
-    const updatedData = currentData.map(row => {
-      let newSubRows = row.subRows;
-      if (row.idetiqueta === parentData.idetiqueta) {
-        const selectedIds = new Set(selectedValores.map(v => v.idvalor));
-        newSubRows = row.subRows.map(sub => ({
-          ...sub,
-          isSelected: selectedIds.has(sub.idvalor)
-        }));
+const handleChildSelectInternal = (selectedValores: TableSubRow[], parentData: TableParentRow) => {
+  const allLabels = getLabels(); // ← OBTENER DEL STORE COMPLETO
+  
+  const updatedData = allLabels.map(row => {  // ← USA TODOS LOS LABELS
+    let newSubRows = row.subRows;
+    if (row.idetiqueta === parentData.idetiqueta) {
+      const selectedIds = new Set(selectedValores.map(v => v.idvalor));
+      newSubRows = row.subRows.map(sub => ({
+        ...sub,
+        isSelected: selectedIds.has(sub.idvalor)
+      }));
+    }
+    return { ...row, subRows: newSubRows };
+  });
+
+  setLabels(updatedData);
+
+  const allSelectedValores: TableSubRow[] = [];
+  updatedData.forEach(row => {
+    row.subRows.forEach(sub => {
+      if (sub.isSelected) {
+        allSelectedValores.push(sub);
       }
-      return { ...row, subRows: newSubRows };
     });
+  });
 
-    setLabels(updatedData);
-
-    const allSelectedValores: TableSubRow[] = [];
-    updatedData.forEach(row => {
-      row.subRows.forEach(sub => {
-        if (sub.isSelected) {
-          allSelectedValores.push(sub);
-        }
-      });
-    });
-
-    onValorSelectionChangeRef.current?.(allSelectedValores, parentData);
-    onSelectionChangeRef.current?.([]);
-  };
+  onValorSelectionChangeRef.current?.(allSelectedValores, parentData);
+  onSelectionChangeRef.current?.([]);
+};
 
 
 const handleParentSelect = (selectedParents: TableParentRow[]) => {
-
   // 1. Saber si existe un subRow seleccionado
-  const hasChildSelection = dataRef.current.some(p =>
+  const allLabels = getLabels(); // ← OBTENER DEL STORE, NO DE PROPS
+  const hasChildSelection = allLabels.some(p =>
     p.subRows.some(s => s.isSelected)
   );
 
   // 2. Si hay valores seleccionados → ignorar selección de padres
   if (hasChildSelection) {
-
     // limpiar selección de padres en store
-    const clearedData = data.map(row => ({
+    const clearedData = allLabels.map(row => ({
       ...row,
       isSelected: false
     }));
 
     setLabels(clearedData);
-
-    // reportar selección limpia
     onSelectionChange?.([]);
-
-    // no hacer nada más
     return;
   }
 
   // 3. Si no hay valores seleccionados → selección normal
   const selectedIds = new Set(selectedParents.map(p => p.idetiqueta));
-  const updatedData = data.map(row => ({
+  const updatedData = allLabels.map(row => ({  // ← USA TODOS LOS LABELS
     ...row,
     isSelected: selectedIds.has(row.idetiqueta),
     subRows: row.subRows.map(s => ({ ...s, isSelected: false }))
   }));
 
   setLabels(updatedData);
-
   onSelectionChange?.(selectedParents);
   onValorSelectionChange?.([], null);
 };

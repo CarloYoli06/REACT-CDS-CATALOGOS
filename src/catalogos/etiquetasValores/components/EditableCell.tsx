@@ -437,42 +437,73 @@ export const EditableCell = ({
   useEffect(() => {
     setValue(initialValue);
   }, [initialValue]);
+  const handleSaveWithCascade = (
+  finalValueToSave: any,
+  initialValue: any,
+  columnId: string,
+  rowData: any,
+  setValue: (val: any) => void
+) => {
+  if (finalValueToSave === initialValue) return;
 
-  const handleSave = (customValue?: any) => {
-    setIsEditing(false);
+  const isParent = 'parent' in rowData && rowData.parent === true;
+  const id = isParent ? (rowData as TableParentRow).idetiqueta : (rowData as TableSubRow).idvalor;
+  const parentId = (rowData as TableSubRow).idetiqueta;
+  const fieldName = COLUMN_TO_PAYLOAD_MAP[columnId];
 
-    const finalValueToSave = customValue !== undefined ? customValue : value;
+  if (!fieldName) {
+    console.error(`No se encontró mapeo para la columna: ${columnId}`);
+    return;
+  }
 
-    if (finalValueToSave === initialValue) return;
+  const processedValue = columnId === 'secuencia' ? Number(finalValueToSave) : finalValueToSave;
+  setValue(processedValue);
 
-    const isParent = 'parent' in rowData && rowData.parent === true;
-    const id = isParent ? (rowData as TableParentRow).idetiqueta : (rowData as TableSubRow).idvalor;
-    const parentId = (rowData as TableSubRow).idetiqueta;
-    const fieldName = COLUMN_TO_PAYLOAD_MAP[columnId];
+  const shouldResetCedi = columnId === 'idsociedad' && 
+                          finalValueToSave !== initialValue &&
+                          rowData.idcedi && 
+                          rowData.idcedi !== '0' &&
+                          rowData.idcedi !== 0;
 
-    if (!fieldName) {
-      console.error(`No se encontró mapeo para la columna: ${columnId}`);
-      return;
+  // Primera operación: Actualizar el campo que cambió
+  addOperation({
+    collection: isParent ? 'labels' : 'values',
+    action: 'UPDATE',
+    payload: {
+      id: id,
+      internalId: rowData.internalId,
+      IDETIQUETA: isParent ? undefined : parentId,
+      IDSOCIEDAD: Number(rowData.idsociedad),
+      IDCEDI: Number(rowData.idcedi),
+      updates: {
+        [fieldName]: processedValue
+      }
     }
+  });
 
-    const processedValue = columnId === 'secuencia' ? Number(finalValueToSave) : finalValueToSave;
-    setValue(processedValue);
-
+  if (shouldResetCedi) {
     addOperation({
       collection: isParent ? 'labels' : 'values',
       action: 'UPDATE',
       payload: {
         id: id,
         internalId: rowData.internalId,
-        IDETIQUETA: isParent ? undefined : parentId, 
-        IDSOCIEDAD: Number(rowData.idsociedad),
-        IDCEDI: Number(rowData.idcedi),
+        IDETIQUETA: isParent ? undefined : parentId,
+        IDSOCIEDAD: Number(finalValueToSave),
+        IDCEDI: 0,
         updates: {
-          [fieldName]: processedValue
+          IDCEDI: 0
         }
       }
     });
-  };
+  }
+};
+
+const handleSave = (customValue?: any) => {
+  setIsEditing(false);
+  const finalValueToSave = customValue !== undefined ? customValue : value;
+  handleSaveWithCascade(finalValueToSave, initialValue, columnId, rowData, setValue);
+};
 
   const handleCancel = () => {
     setValue(initialValue);

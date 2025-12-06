@@ -184,34 +184,36 @@ export default function Catalogos() {
     setSelectedValorParent(null);
   };
 
-  const filteredLabels = labels
-    .map(label => {
-      const term = searchTerm.toLowerCase();
+const filteredLabels = labels
+  .map(label => {
+    const term = searchTerm.toLowerCase();
 
-      const parentMatch =
-        label.etiqueta?.toLowerCase().includes(term) ||
-        label.descripcion?.toLowerCase().includes(term) ||
-        label.coleccion?.toLowerCase().includes(term) ||
-        label.seccion?.toLowerCase().includes(term);
+    const parentMatch =
+      label.etiqueta?.toLowerCase().includes(term) ||
+      label.descripcion?.toLowerCase().includes(term) ||
+      label.coleccion?.toLowerCase().includes(term) ||
+      label.seccion?.toLowerCase().includes(term);
 
-      const childrenMatch = label.subRows?.some(v =>
-      (v.valor?.toLowerCase().includes(term) ||
-        v.descripcion?.toLowerCase().includes(term) ||
-        v.alias?.toLowerCase().includes(term))
-      );
+    // Filtrar solo los hijos que coinciden con la búsqueda
+    const matchedChildren = label.subRows?.filter(v =>
+      v.valor?.toLowerCase().includes(term) ||
+      v.descripcion?.toLowerCase().includes(term) ||
+      v.alias?.toLowerCase().includes(term)
+    ) || [];
 
-      // ⭐⭐ CLAVE: si coincide o padre o hijo, regresamos el padre **COMPLETO**
-      if (parentMatch || childrenMatch) {
-        return {
-          ...label,
-          // ⭐ NO filtramos los hijos, se regresan tal cual
-          subRows: label.subRows
-        };
-      }
+    const childrenMatch = matchedChildren.length > 0;
 
-      return null;
-    })
-    .filter((row): row is TableParentRow => row !== null);
+    // Si coincide el padre o algún hijo
+    if (parentMatch || childrenMatch) {
+      return {
+        ...label,
+        subRows: parentMatch ? label.subRows : matchedChildren
+      };
+    }
+
+    return null;
+  })
+  .filter((row): row is TableParentRow => row !== null);
 
   const preparedData = useMemo(() => {
     return filteredLabels.map(row => {

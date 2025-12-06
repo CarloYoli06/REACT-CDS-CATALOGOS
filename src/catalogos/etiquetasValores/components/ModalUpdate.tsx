@@ -90,9 +90,9 @@ function ModalUpdate({
     useEffect(() => {
         const loadData = () => {
             const labels = getLabels();
+            console.log("Modal Update Labels: ",labels);
             const parents = labels.filter((label) => label.parent);
             setAllLabels(parents);
-
             const sociedadLabel = labels.find(l => l.etiqueta === 'SOCIEDAD');
             const cediLabel = labels.find(l => l.etiqueta === 'Catálogo de Centros de Distribución');
 
@@ -218,19 +218,40 @@ function ModalUpdate({
             }
         }
 
-        setComboInputs(prev => ({
-            ...prev,
-            [fieldName]: newText
-        }));
+        // Si estamos cambiando la sociedad, resetear el CEDI a "0"
+        if (fieldName === 'idsociedad') {
+            const cediDefaultText = cediOptions.find(o => o.idvalor === '0')?.valor || 'Todos los CEDIs';
+            
+            setComboInputs(prev => ({
+                idsociedad: newText,
+                idcedi: cediDefaultText
+            }));
 
-        setCatalogoData(prevState => {
-            const updatedState = {
-                ...prevState,
-                [fieldName]: newId
-            };
-            catalogoRef.current = updatedState;
-            return updatedState;
-        });
+            setCatalogoData(prevState => {
+                const updatedState = {
+                    ...prevState,
+                    idsociedad: newId,
+                    idcedi: '0' // Resetear a "0"
+                };
+                catalogoRef.current = updatedState;
+                return updatedState;
+            });
+        } else {
+            // Solo estamos cambiando el CEDI
+            setComboInputs(prev => ({
+                ...prev,
+                [fieldName]: newText
+            }));
+
+            setCatalogoData(prevState => {
+                const updatedState = {
+                    ...prevState,
+                    [fieldName]: newId
+                };
+                catalogoRef.current = updatedState;
+                return updatedState;
+            });
+        }
     };
 
     // Handlers para Valor
@@ -257,44 +278,64 @@ function ModalUpdate({
         });
     };
 
-    const handleValorComboBoxChange = (e: any, fieldName: 'IDSOCIEDAD' | 'IDCEDI') => {
-        const selectedItem = e.detail.item;
-        const inputValue = e.target.value;
+const handleValorComboBoxChange = (e: any, fieldName: 'IDSOCIEDAD' | 'IDCEDI') => {
+    const selectedItem = e.detail.item;
+    const inputValue = e.target.value;
 
-        let newId = '0';
-        let newText = inputValue;
+    let newId = '0';
+    let newText = inputValue;
 
-        const options = fieldName === 'IDSOCIEDAD' ? sociedadOptions : cediOptions;
+    const options = fieldName === 'IDSOCIEDAD' ? sociedadOptions : cediOptions;
 
-        if (selectedItem) {
-            newText = selectedItem.text;
-            const option = options.find(o => o.valor === newText);
-            if (option) {
-                newId = option.idvalor || option.valor || '0';
-            }
-        } else {
-            const option = options.find(o => o.valor === inputValue);
-            if (option) {
-                newId = option.idvalor || option.valor || '0';
-            }
+    if (selectedItem) {
+        newText = selectedItem.text;
+        const option = options.find(o => o.valor === newText);
+        if (option) {
+            newId = option.idvalor || option.valor || '0';
         }
+    } else {
+        const option = options.find(o => o.valor === inputValue);
+        if (option) {
+            newId = option.idvalor || option.valor || '0';
+        }
+    }
 
-        // Update combo inputs state for display
+    if (fieldName === 'IDSOCIEDAD') {
+        const cediDefaultText = cediOptions.find(o => o.idvalor === '0')?.valor || 'Todos los CEDIs';
+        
+        // Actualizar ambos campos de visualización
+        setComboInputs(prev => ({
+            idsociedad: newText,
+            idcedi: cediDefaultText  // ← Reset visual
+        }));
+
+        // Actualizar datos del formulario
+        setValorData(prevState => {
+            const updatedState = {
+                ...prevState,
+                IDSOCIEDAD: newId,
+                IDCEDI: '0'  // ← Reset a "0" (Todos)
+            };
+            valorRef.current = updatedState;
+            return updatedState;
+        });
+    } else {
+        // Solo cambiando CEDI (no hay reset)
         setComboInputs(prev => ({
             ...prev,
-            [fieldName === 'IDSOCIEDAD' ? 'idsociedad' : 'idcedi']: newText
+            idcedi: newText
         }));
 
         setValorData(prevState => {
             const updatedState = {
                 ...prevState,
-                [fieldName]: newId
+                IDCEDI: newId
             };
             valorRef.current = updatedState;
             return updatedState;
         });
-    };
-
+    }
+};
     // Transformar allLabels para ValueHelpSelector
     const valueHelpData = useMemo<LabelData[]>(() => {
         return allLabels.map((label) => ({

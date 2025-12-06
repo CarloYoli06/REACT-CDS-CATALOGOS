@@ -241,19 +241,39 @@ function ModalNewValor({compact = false, preSelectedParent }: ModalNewValorProps
           }
       }
 
-      setComboInputs(prev => ({
-          ...prev,
-          [fieldName === 'IDSOCIEDAD' ? 'idsociedad' : 'idcedi']: newText
-      }));
+      if (fieldName === 'IDSOCIEDAD') {
+          const cediDefaultText = cediOptions.find(o => o.idvalor === '0')?.valor || 'Todos los CEDIs';
+          
+          setComboInputs({
+              idsociedad: newText,
+              idcedi: cediDefaultText  // ← Reset visual
+          });
 
-      setFormData(prevState => {
-          const updatedState = {
-              ...prevState,
-              [fieldName]: newId
-          };
-          latestFormRef.current = updatedState;
-          return updatedState;
-      });
+          setFormData(prevState => {
+              const updatedState = {
+                  ...prevState,
+                  IDSOCIEDAD: newId,
+                  IDCEDI: '0'  // ← Reset a "0"
+              };
+              latestFormRef.current = updatedState;
+              return updatedState;
+          });
+      } else {
+          // Solo cambió CEDI
+          setComboInputs(prev => ({
+              ...prev,
+              idcedi: newText
+          }));
+
+          setFormData(prevState => {
+              const updatedState = {
+                  ...prevState,
+                  IDCEDI: newId
+              };
+              latestFormRef.current = updatedState;
+              return updatedState;
+          });
+      }
   };
 
   const handleIdValorPaSelect = (idvalor: string | null) => {

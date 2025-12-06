@@ -123,7 +123,7 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
 
   const handleComboBoxChange = (e: any, fieldName: 'IDSOCIEDAD' | 'IDCEDI') => {
     const selectedItem = e.detail.item;
-    const inputValue = e.target.value; // Text currently in the input
+    const inputValue = e.target.value;
 
     let newId = 0;
     let newText = inputValue;
@@ -137,32 +137,45 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
         newId = Number(option.idvalor) || Number(option.valor) || 0;
       }
     } else {
-      // User typed something. Try to match it to an option by text
       const option = options.find(o => o.valor === inputValue);
       if (option) {
         newId = Number(option.idvalor) || Number(option.valor) || 0;
       }
     }
 
-    // Update display text
-    setComboInputs(prev => ({
-      ...prev,
-      [fieldName]: newText
-    }));
+    if (fieldName === 'IDSOCIEDAD') {
+      const cediDefaultText = cediOptions.find(o => o.idvalor === '0')?.valor || 'Todos los CEDIs';
+      
+      setComboInputs({
+        IDSOCIEDAD: newText,
+        IDCEDI: cediDefaultText  
+      });
 
-    // Update stored ID
-    setFormData(prevState => {
-      const updatedState = {
-        ...prevState,
-        [fieldName]: newId
-      };
+      setFormData(prevState => {
+        const updatedState = {
+          ...prevState,
+          IDSOCIEDAD: newId,
+          IDCEDI: 0  
+        };
+        latestFormRef.current = updatedState;
+        return updatedState;
+      });
+    } else {
+      // Solo cambió CEDI
+      setComboInputs(prev => ({
+        ...prev,
+        IDCEDI: newText
+      }));
 
-      // If society changes, clear CEDI selection if it doesn't match anymore (optional, but good practice)
-      // For now, let's just update the state. The filtering in render will hide invalid options.
-
-      latestFormRef.current = updatedState;
-      return updatedState;
-    });
+      setFormData(prevState => {
+        const updatedState = {
+          ...prevState,
+          IDCEDI: newId
+        };
+        latestFormRef.current = updatedState;
+        return updatedState;
+      });
+    }
   };
 
   const handleSubmit = () => {
