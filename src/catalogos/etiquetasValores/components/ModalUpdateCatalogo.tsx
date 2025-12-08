@@ -195,9 +195,8 @@ function ModalUpdateCatalogo({ label }: ModalUpdateCatalogoProps) {
                 [fieldName]: newId
             };
 
-            // If society changes to 0 (TODOS), set CEDI to 0 (TODOS) automatically
-            // Logic aligned with ModalNewCatalogo
-            if (fieldName === 'idsociedad' && (newId === '0')) {
+            // Always reset CEDI when society changes to prevent invalid combinations
+            if (fieldName === 'idsociedad') {
                 updatedState.idcedi = '0';
                 setComboInputs(prev => ({ ...prev, idcedi: 'TODOS' }));
             }
