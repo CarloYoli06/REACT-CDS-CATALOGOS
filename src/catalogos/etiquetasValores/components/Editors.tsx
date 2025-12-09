@@ -110,9 +110,10 @@ export const IndiceEditor = ({ value, onSave, onCancel, onTab }: EditorProps) =>
 
 interface CatalogEditorProps extends EditorProps {
   catalogTag: "SOCIEDAD" | "CEDI";
+  parentFilter?: string | number;
 }
 
-export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: CatalogEditorProps) => {
+export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag, parentFilter }: CatalogEditorProps) => {
   const [options, setOptions] = useState<TableSubRow[]>([]);
   const [inputValue, setInputValue] = useState("");
   const isSelectingRef = React.useRef(false);
@@ -129,12 +130,21 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
       const todosOption: TableSubRow = {
         idsociedad: '0', idcedi: '0', idetiqueta: catalogTag, idvalor: '0', idvalorpa: catalogTag === 'CEDI' ? '0' : null, valor: 'TODOS', alias: '', secuencia: 0, imagen: null, ruta: null, descripcion: '', indice: '', coleccion: '', seccion: ''
       };
-      setOptions([todosOption, ...parentCatalog.subRows]);
+      
+      let filteredRows = parentCatalog.subRows;
+
+      // FIC: Filter by parent society if applicable (only for CEDI)
+      if (catalogTag === 'CEDI' && parentFilter !== undefined && parentFilter !== 0 && parentFilter !== '0') {
+        const parentFilterStr = String(parentFilter);
+        filteredRows = filteredRows.filter(row => row.idvalorpa === parentFilterStr);
+      }
+
+      setOptions([todosOption, ...filteredRows]);
     }
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [catalogTag]);
+  }, [catalogTag, parentFilter]);
 
   useEffect(() => {
     const foundOption = options.find(o =>

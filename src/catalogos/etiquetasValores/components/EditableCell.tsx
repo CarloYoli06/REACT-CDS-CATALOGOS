@@ -514,7 +514,7 @@ export const EditableCell = ({
       case 'sociedad':
         return <CatalogEditor catalogTag="SOCIEDAD" {...commonProps} />;
       case 'cedi':
-        return <CatalogEditor catalogTag="CEDI" {...commonProps} />;
+        return <CatalogEditor catalogTag="CEDI" {...commonProps} parentFilter={rowData.idsociedad} />;
       case 'parentSelector':
         return <ParentValueEditor {...commonProps} />;
       case 'numeric':
