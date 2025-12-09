@@ -285,7 +285,7 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
                 valueStateMessage={<div slot="valueStateMessage">{errors.IDSOCIEDAD}</div>}
               >
                 {sociedadOptions.map((option) => (
-                  <ComboBoxItem key={option.idvalor} text={option.valor} />
+                  <ComboBoxItem key={option.idvalor} text={`${option.valor} (${option.idvalor})`} />
                 ))}
               </ComboBox>
             </FormItem>
@@ -304,7 +304,7 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
                 {cediOptions
                   .filter(option => Number(option.idvalorpa) === formData.IDSOCIEDAD || (option.idvalor === '0' && formData.IDSOCIEDAD === 0))
                   .map((option) => (
-                    <ComboBoxItem key={option.idvalor} text={option.valor} />
+                    <ComboBoxItem key={option.idvalor} text={`${option.valor} (${option.idvalor})`} />
                   ))}
               </ComboBox>
             </FormItem>

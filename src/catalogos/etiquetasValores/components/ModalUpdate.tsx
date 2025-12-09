@@ -487,7 +487,7 @@ function ModalUpdate({
                                     valueStateMessage={<div slot="valueStateMessage">{errors.idsociedad}</div>}
                                 >
                                     {sociedadOptions.map((option) => (
-                                        <ComboBoxItem key={option.idvalor} text={option.valor} />
+                                        <ComboBoxItem key={option.idvalor} text={`${option.valor}${option.idvalor === '0' ? ' (TODOS)' : ''}`}  />
                                     ))}
                                 </ComboBox>
                             </FormItem>
@@ -506,7 +506,7 @@ function ModalUpdate({
                                     {cediOptions
                                         .filter(option => Number(option.idvalorpa) === Number(catalogoData.idsociedad) || (option.idvalor === '0' && Number(catalogoData.idsociedad) === 0))
                                         .map((option) => (
-                                            <ComboBoxItem key={option.idvalor} text={option.valor} />
+                                            <ComboBoxItem key={option.idvalor} text={`${option.valor}${option.idvalor === '0' ? ' (TODOS)' : ''}`}  />
                                         ))}
                                 </ComboBox>
                             </FormItem>
