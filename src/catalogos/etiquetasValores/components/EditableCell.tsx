@@ -462,7 +462,7 @@ export const EditableCell = ({
       [fieldName]: processedValue
     };
 
-    if (fieldName === 'IDSOCIEDAD' && (processedValue === 0 || processedValue === '0')) {
+    if (fieldName === 'IDSOCIEDAD') {
       updates['IDCEDI'] = 0;
     }
 

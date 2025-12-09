@@ -16,7 +16,7 @@ import '@ui5/webcomponents-icons/dist/pending';
 import '@ui5/webcomponents-icons/dist/delete';
 import { TableParentRow, TableSubRow } from '../services/labelService';
 import { useMemo, useRef, useState, useEffect, } from 'react';
-import { setLabels, getOperations, removeOperation, subscribe, Operation } from '../store/labelStore';
+import { setLabels, getOperations, removeOperation, subscribe, Operation, getLabels } from '../store/labelStore';
 import { EditableCell, ImagePopoverCell, TokenViewCell, CatalogViewCell, ParentValueViewCell } from './EditableCell';
 
 interface TableLabelsProps {
@@ -292,8 +292,9 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
   }), [initialExpanded]);
 
   const handleChildSelectInternal = (selectedValores: TableSubRow[], parentData: TableParentRow) => {
-    const currentData = dataRef.current;
-    const updatedData = currentData.map(row => {
+    // FIC: Use getLabels() to ensure we work with the full dataset, not just the filtered view
+    const allLabels = getLabels(); 
+    const updatedData = allLabels.map(row => {
       let newSubRows = row.subRows;
       if (row.idetiqueta === parentData.idetiqueta) {
         const selectedIds = new Set(selectedValores.map(v => v.idvalor));
@@ -322,17 +323,18 @@ const TableLabels = ({ data, onSelectionChange, onValorSelectionChange, initialE
 
 
 const handleParentSelect = (selectedParents: TableParentRow[]) => {
+  // FIC: Use getLabels() for full dataset
+  const allLabels = getLabels();
 
-  // 1. Saber si existe un subRow seleccionado
-  const hasChildSelection = dataRef.current.some(p =>
+  // 1. Saber si existe un subRow seleccionado (globally)
+  const hasChildSelection = allLabels.some(p =>
     p.subRows.some(s => s.isSelected)
   );
 
   // 2. Si hay valores seleccionados → ignorar selección de padres
   if (hasChildSelection) {
-
-    // limpiar selección de padres en store
-    const clearedData = data.map(row => ({
+    // limpiar selección de padres en store (full dataset)
+    const clearedData = allLabels.map(row => ({
       ...row,
       isSelected: false
     }));
@@ -345,18 +347,33 @@ const handleParentSelect = (selectedParents: TableParentRow[]) => {
     // no hacer nada más
     return;
   }
-
-  // 3. Si no hay valores seleccionados → selección normal
-  const selectedIds = new Set(selectedParents.map(p => p.idetiqueta));
-  const updatedData = data.map(row => ({
-    ...row,
-    isSelected: selectedIds.has(row.idetiqueta),
-    subRows: row.subRows.map(s => ({ ...s, isSelected: false }))
-  }));
+  
+  const visibleIds = new Set(data.map(d => d.idetiqueta));
+  const selectedIdsInView = new Set(selectedParents.map(p => p.idetiqueta));
+  
+  const updatedData = allLabels.map(row => {
+    if (visibleIds.has(row.idetiqueta)) {
+       // It's in the current view, so we trust the "selectedParents" (triggered by the UI event)
+       return {
+         ...row,
+         isSelected: selectedIdsInView.has(row.idetiqueta),
+         subRows: row.subRows.map(s => ({ ...s, isSelected: false }))
+       };
+    } else {
+       // It's hidden by filter, keep original state
+       return {
+         ...row,
+         // keep row.isSelected as is
+         subRows: row.subRows.map(s => ({ ...s, isSelected: false }))
+       };
+    }
+  });
 
   setLabels(updatedData);
 
-  onSelectionChange?.(selectedParents);
+  // We need to notify the parent about ALL selected rows (visible + hidden)
+  const finalSelectedParents = updatedData.filter(r => r.isSelected);
+  onSelectionChange?.(finalSelectedParents);
   onValorSelectionChange?.([], null);
 };
 

@@ -149,13 +149,9 @@ export const CatalogEditor = ({ value, onSave, onCancel, onTab, catalogTag }: Ca
   }, [value, options]);
 
   const filteredOptions = React.useMemo(() => {
-    if (!inputValue) return options;
-    const lowerInput = inputValue.toLowerCase();
-    return options.filter(opt =>
-      opt.valor.toLowerCase().includes(lowerInput) ||
-      opt.idvalor.toLowerCase().includes(lowerInput)
-    );
-  }, [options, inputValue]);
+    // FIC: Return all options regardless of input to allow seeing all choices
+    return options;
+  }, [options]);
 
   const handleChange = (e: any) => {
     if (e.detail.item) {
