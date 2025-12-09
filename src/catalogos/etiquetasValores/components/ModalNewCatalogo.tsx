@@ -39,14 +39,14 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
   useEffect(() => {
     if (isModalOpen) {
       const labels = getLabels();
-      const sociedadLabel = labels.find(l => l.etiqueta === 'SOCIEDAD');
-      const cediLabel = labels.find(l => l.etiqueta === 'Catálogo de Centros de Distribución');
+      const sociedadLabel = labels.find(l => l.idetiqueta === 'SOCIEDAD');
+      const cediLabel = labels.find(l => l.idetiqueta === 'CEDI');
 
       const todosSociedad: TableSubRow = {
         idsociedad: '0', idcedi: '0', idetiqueta: 'SOCIEDAD', idvalor: '0', idvalorpa: null, valor: 'TODOS', alias: '', secuencia: 0, imagen: null, ruta: null, descripcion: '', indice: '', coleccion: '', seccion: ''
       };
       const todosCedi: TableSubRow = {
-        idsociedad: '0', idcedi: '0', idetiqueta: 'Catálogo de Centros de Distribución', idvalor: '0', idvalorpa: '0', valor: 'TODOS', alias: '', secuencia: 0, imagen: null, ruta: null, descripcion: '', indice: '', coleccion: '', seccion: ''
+        idsociedad: '0', idcedi: '0', idetiqueta: 'CEDI', idvalor: '0', idvalorpa: '0', valor: 'TODOS', alias: '', secuencia: 0, imagen: null, ruta: null, descripcion: '', indice: '', coleccion: '', seccion: ''
       };
 
       if (sociedadLabel && sociedadLabel.subRows) {
@@ -285,7 +285,7 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
                 valueStateMessage={<div slot="valueStateMessage">{errors.IDSOCIEDAD}</div>}
               >
                 {sociedadOptions.map((option) => (
-                  <ComboBoxItem key={option.idvalor} text={`${option.valor} (${option.idvalor})`} />
+                  <ComboBoxItem key={option.idvalor} text={`${option.valor}`} additionalText={option.idvalor} />
                 ))}
               </ComboBox>
             </FormItem>
@@ -304,7 +304,7 @@ function ModalNewCatalogo({ compact = false }: ModalNewCatalogoProps) {
                 {cediOptions
                   .filter(option => Number(option.idvalorpa) === formData.IDSOCIEDAD || (option.idvalor === '0' && formData.IDSOCIEDAD === 0))
                   .map((option) => (
-                    <ComboBoxItem key={option.idvalor} text={`${option.valor} (${option.idvalor})`} />
+                    <ComboBoxItem key={option.idvalor} text={`${option.valor}`} additionalText={option.idvalor} />
                   ))}
               </ComboBox>
             </FormItem>

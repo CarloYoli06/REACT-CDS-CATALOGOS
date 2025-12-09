@@ -283,7 +283,7 @@ function ModalUpdateCatalogo({ label }: ModalUpdateCatalogoProps) {
                                 valueStateMessage={<div slot="valueStateMessage">{errors.idsociedad}</div>}
                             >
                                 {sociedadOptions.map((option) => (
-                                    <ComboBoxItem key={option.idvalor} text={option.valor} />
+                                    <ComboBoxItem key={option.idvalor} text={`${option.valor} (${option.idvalor})`} />
                                 ))}
                             </ComboBox>
                         </FormItem>
@@ -302,7 +302,7 @@ function ModalUpdateCatalogo({ label }: ModalUpdateCatalogoProps) {
                                 {cediOptions
                                     .filter(option => Number(option.idvalorpa) === Number(formData.idsociedad) || (option.idvalor === '0' && formData.idsociedad === '0'))
                                     .map((option) => (
-                                        <ComboBoxItem key={option.idvalor} text={option.valor} />
+                                        <ComboBoxItem key={option.idvalor} text={`${option.valor} (${option.idvalor})`} />
                                     ))}
                             </ComboBox>
                         </FormItem>
