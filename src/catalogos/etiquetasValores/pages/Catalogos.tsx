@@ -153,18 +153,25 @@ export default function Catalogos() {
         label.coleccion?.toLowerCase().includes(term) ||
         label.seccion?.toLowerCase().includes(term);
 
-      const childrenMatch = label.subRows?.some(v =>
-      (v.valor?.toLowerCase().includes(term) ||
+      const matchingChildren = label.subRows?.filter(v =>
+        v.valor?.toLowerCase().includes(term) ||
         v.descripcion?.toLowerCase().includes(term) ||
-        v.alias?.toLowerCase().includes(term))
+        v.alias?.toLowerCase().includes(term)
       );
 
-      // ⭐⭐ CLAVE: si coincide o padre o hijo, regresamos el padre **COMPLETO**
-      if (parentMatch || childrenMatch) {
+      // 1. Si coincide el PADRE, mostramos PADRE + TODOS sus hijos
+      if (parentMatch) {
         return {
           ...label,
-          // ⭐ NO filtramos los hijos, se regresan tal cual
           subRows: label.subRows
+        };
+      }
+
+      // 2. Si NO coincide el padre, pero hay hijos que coinciden, mostramos PADRE + HIJOS FILTRADOS
+      if (matchingChildren && matchingChildren.length > 0) {
+        return {
+          ...label,
+          subRows: matchingChildren
         };
       }
 
